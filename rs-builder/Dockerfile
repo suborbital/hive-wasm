@@ -1,0 +1,16 @@
+# This Dockerfile (and everything in rs-builder) is internal to the tool and usually doesn't need to be changed, see rs-wasm
+
+FROM rust:1.42-stretch
+
+RUN curl https://rustwasm.github.io/wasm-pack/installer/init.sh -sSf | sh
+
+WORKDIR /root
+RUN mkdir rs-builder; mkdir rs-wasm
+WORKDIR /root/rs-builder
+
+ADD ./rs-builder .
+
+RUN wasm-pack build
+RUN rm ./src/run.rs
+
+ENTRYPOINT ./build.sh
