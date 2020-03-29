@@ -1,3 +1,8 @@
+
+hivew:
+	go install ./hivew
+
+
 rs-img = suborbital/hive-rs:$(shell cat ./rs-builder/.rs-ver)
 
 rs-build:
@@ -5,3 +10,5 @@ rs-build:
 
 rs:
 	docker run -it --mount type=bind,source="$(PWD)"/rs-wasm,target=/root/rs-wasm $(rs-img)
+
+.PHONY: hivew rs-build rs
