@@ -2,8 +2,8 @@ package main
 
 import (
 	"github.com/spf13/cobra"
-	"github.com/suborbital/hive-wasm/hivew/command"
-	"github.com/suborbital/hive-wasm/hivew/release"
+	"github.com/suborbital/hivew/hivew/command"
+	"github.com/suborbital/hivew/hivew/release"
 )
 
 func rootCommand() *cobra.Command {
