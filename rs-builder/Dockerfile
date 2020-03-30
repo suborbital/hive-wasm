@@ -1,4 +1,4 @@
-# This Dockerfile (and everything in rs-builder) is internal to the tool and usually doesn't need to be changed, see rs-wasm
+# This Dockerfile (and everything in rs-builder) is internal to the tool and doesn't need to be changed.
 
 FROM rust:1.42-stretch
 
