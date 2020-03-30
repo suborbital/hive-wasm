@@ -1,4 +1,4 @@
-module github.com/suborbital/hive-wasm
+module github.com/suborbital/hivew
 
 go 1.14
 

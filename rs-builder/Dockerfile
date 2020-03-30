@@ -11,6 +11,6 @@ WORKDIR /root/rs-builder
 ADD ./rs-builder .
 
 RUN wasm-pack build
-RUN rm ./src/run.rs
+RUN rm ./src/run.rs; rm -r ./pkg
 
 ENTRYPOINT ./build.sh
