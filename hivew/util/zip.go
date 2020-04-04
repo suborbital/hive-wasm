@@ -3,17 +3,14 @@ package util
 import (
 	"archive/zip"
 	"bytes"
-	"fmt"
-	"io"
 	"io/ioutil"
-	"log"
 	"os"
 	"path/filepath"
 
 	"github.com/pkg/errors"
 )
 
-// derived loosely from https://golang.org/src/archive/zip/example_test.go
+// based loosely on https://golang.org/src/archive/zip/example_test.go
 
 // WriteBundle writes a runnable bundle
 func WriteBundle(files []os.File, targetPath string) error {
@@ -54,48 +51,53 @@ func WriteBundle(files []os.File, targetPath string) error {
 	return nil
 }
 
-func ExampleReader() {
+// Bundle represents a Runnable bundle
+type Bundle struct {
+	Runnables []RawWASM
+}
 
+// RawWASM is the raw data from a WASM file
+type RawWASM struct {
+	Name     string
+	Contents []byte
+}
+
+// ReadBundle reads a .wasm.zip file and returns the bundle of wasm files within as raw bytes
+// (suitable to be loaded into a wasmer instance)
+func ReadBundle(path string) (*Bundle, error) {
 	// Open a zip archive for reading.
-
-	r, err := zip.OpenReader("testdata/readme.zip")
-
+	r, err := zip.OpenReader(path)
 	if err != nil {
-
-		log.Fatal(err)
-
+		return nil, errors.Wrap(err, "failed to open bundle")
 	}
 
 	defer r.Close()
 
+	bundle := &Bundle{make([]RawWASM, len(r.File))}
+
 	// Iterate through the files in the archive,
 
-	// printing some of their contents.
-
-	for _, f := range r.File {
-
-		fmt.Printf("Contents of %s:\n", f.Name)
-
-		rc, err := f.Open()
-
-		if err != nil {
-
-			log.Fatal(err)
-
+	for i, f := range r.File {
+		raw := RawWASM{
+			Name: f.Name,
 		}
 
-		_, err = io.CopyN(os.Stdout, rc, 68)
-
+		rc, err := f.Open()
 		if err != nil {
+			return nil, errors.Wrapf(err, "failed to open %s from bundle", f.Name)
+		}
 
-			log.Fatal(err)
-
+		bytes, err := ioutil.ReadAll(rc)
+		if err != nil {
+			return nil, errors.Wrapf(err, "failed to read %s from bundle", f.Name)
 		}
 
 		rc.Close()
 
-		fmt.Println()
+		raw.Contents = bytes
 
+		bundle.Runnables[i] = raw
 	}
 
+	return bundle, nil
 }
