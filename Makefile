@@ -1,9 +1,10 @@
+rs-img = suborbital/hive-rs:$(shell cat ./rs-builder/.rs-ver)
 
 hivew:
 	go install ./hivew
 
-
-rs-img = suborbital/hive-rs:$(shell cat ./rs-builder/.rs-ver)
+test:
+	go test -v ./...
 
 rs-build:
 	docker build . -f rs-builder/Dockerfile -t $(rs-img)
