@@ -7,7 +7,12 @@ The Hive job scheduler aims for WASM to be a first-class citizen. `hivew` is the
 Docker must be installed to build WASM Runnables.
 
 ## Installing
-To install `hivew`, clone this repo and run `make hivew`. Go 1.14 must be installed. Package manager installations will be available soon.
+To install `hivew`, clone this repo and run `make hivew`. A version of Go that supports Modules is required. Package manager installations will be available soon.
+
+You can also install using [gobinaries](https://gobinaries.com/):
+```
+curl -sf https://gobinaries.com/suborbital/hivew/hivew | sh
+```
 
 ## Building Runnables
 To build a Rust-based Runnable, see [helloworld-rs](./helloworld-rs/README.md)
