@@ -3,10 +3,11 @@ package main
 import (
 	"github.com/spf13/cobra"
 	"github.com/suborbital/hivew/hivew/command"
+	"github.com/suborbital/hivew/hivew/context"
 	"github.com/suborbital/hivew/hivew/release"
 )
 
-func rootCommand() *cobra.Command {
+func rootCommand(bctx *context.BuildContext) *cobra.Command {
 	cmd := &cobra.Command{
 		Use:     "hivew",
 		Short:   "Hive WASM Runnable toolchain",
@@ -16,7 +17,7 @@ func rootCommand() *cobra.Command {
 
 	cmd.SetVersionTemplate("{{.Version}}\n")
 
-	cmd.AddCommand(command.BuildCmd())
+	cmd.AddCommand(command.BuildCmd(bctx))
 
 	return cmd
 }
