@@ -35,7 +35,7 @@ type RunnableBundle struct {
 
 // DotHive represents a .hive.yanl file
 type DotHive struct {
-	Lang string
+	Lang string `yaml:"lang"`
 }
 
 // CurrentBuildContext returns the current build context
@@ -62,6 +62,17 @@ func CurrentBuildContext() (*BuildContext, error) {
 	}
 
 	return bctx, nil
+}
+
+// RunnableExists returns true if the context contains a runnable with name <name>
+func (b *BuildContext) RunnableExists(name string) bool {
+	for _, r := range b.Runnables {
+		if r.Name == name {
+			return true
+		}
+	}
+
+	return false
 }
 
 func getRunnableDirs(cwd string) ([]RunnableDir, error) {
