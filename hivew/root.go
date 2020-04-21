@@ -18,6 +18,7 @@ func rootCommand(bctx *context.BuildContext) *cobra.Command {
 	cmd.SetVersionTemplate("{{.Version}}\n")
 
 	cmd.AddCommand(command.BuildCmd(bctx))
+	cmd.AddCommand(command.CreateCmd(bctx))
 
 	return cmd
 }
