@@ -38,11 +38,12 @@ func newRunnerFromRaw(raw *util.RawWASM) *Runner {
 // Run runs a Runner
 func (w *Runner) Run(job hive.Job, run hive.RunFunc) (interface{}, error) {
 	if w.inst == nil {
-		if w.raw == nil {
-			return nil, errors.New("Runner attempted to Run with no WASM bytes")
+		bytes, err := w.wasmBytes()
+		if err != nil {
+			return nil, errors.Wrap(err, "Failed to wasmBytes")
 		}
 
-		instance, err := wasm.NewInstance(w.raw.Contents)
+		instance, err := wasm.NewInstance(bytes)
 		if err != nil {
 			return nil, errors.Wrap(err, "failed to wasm.NewInstance")
 		}
@@ -71,6 +72,15 @@ func (w *Runner) Run(job hive.Job, run hive.RunFunc) (interface{}, error) {
 	deallocate(w.inst, res.ToI32(), len(output))
 
 	return output, nil
+}
+
+// WasmBytes returns the raw bytes of the runner's wasm
+func (w *Runner) wasmBytes() ([]byte, error) {
+	if w.raw != nil {
+		return w.raw.Contents, nil
+	}
+
+	return wasm.ReadBytes(w.wasmFile)
 }
 
 func writeInput(inst *wasm.Instance, input string) int32 {
