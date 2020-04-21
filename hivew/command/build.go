@@ -9,6 +9,7 @@ import (
 	"github.com/spf13/cobra"
 	"github.com/suborbital/hivew/hivew/context"
 	"github.com/suborbital/hivew/hivew/util"
+	"github.com/suborbital/hivew/wasm"
 )
 
 // BuildCmd returns the build command
@@ -41,7 +42,7 @@ func BuildCmd(bctx *context.BuildContext) *cobra.Command {
 			if err != nil {
 				return errors.Wrap(err, "🚫 failed to get bundle flag")
 			} else if shouldBundle {
-				if err := util.WriteBundle(results, bctx.Bundle.Fullpath); err != nil {
+				if err := wasm.WriteBundle(results, bctx.Bundle.Fullpath); err != nil {
 					return errors.Wrap(err, "🚫 failed to WriteBundle")
 				}
 

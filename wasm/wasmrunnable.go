@@ -3,8 +3,7 @@ package wasm
 import (
 	"strings"
 
-	"github.com/suborbital/hive"
-	"github.com/suborbital/hivew/hivew/util"
+	"github.com/suborbital/hive/hive"
 
 	"github.com/pkg/errors"
 
@@ -13,23 +12,23 @@ import (
 
 //Runner represents a wasm-based runnable
 type Runner struct {
-	wasmFile string
-	raw      *util.RawWASM
-	inst     *wasm.Instance
+	context *Context
 }
 
-// NewRunner returns a new Runner
+// NewRunner returns a new *Runner
 func NewRunner(path string) *Runner {
 	w := &Runner{
-		wasmFile: path,
+		context: &Context{
+			wasmFilePath: path,
+		},
 	}
 
 	return w
 }
 
-func newRunnerFromRaw(raw *util.RawWASM) *Runner {
+func newRunnerFromContext(ctx *Context) *Runner {
 	w := &Runner{
-		raw: raw,
+		context: ctx,
 	}
 
 	return w
@@ -37,53 +36,48 @@ func newRunnerFromRaw(raw *util.RawWASM) *Runner {
 
 // Run runs a Runner
 func (w *Runner) Run(job hive.Job, run hive.RunFunc) (interface{}, error) {
-	if w.inst == nil {
-		bytes, err := w.wasmBytes()
-		if err != nil {
-			return nil, errors.Wrap(err, "Failed to wasmBytes")
-		}
-
-		instance, err := wasm.NewInstance(bytes)
-		if err != nil {
-			return nil, errors.Wrap(err, "failed to wasm.NewInstance")
-		}
-
-		w.inst = &instance
-	}
-
 	input, ok := job.Data().(string)
 	if !ok {
 		return nil, errors.New("failed to run WASM job, input is not string")
 	}
 
-	inPointer := writeInput(w.inst, input)
+	var output string
+	var err error
 
-	wasmRun := w.inst.Exports["run_e"]
+	w.context.useInstance(func(instance wasm.Instance) {
+		inPointer := writeInput(instance, input)
 
-	res, err := wasmRun(inPointer)
+		wasmRun := instance.Exports["run_e"]
+
+		res, err := wasmRun(inPointer)
+		if err != nil {
+			err = errors.Wrap(err, "failed to wasmRun")
+		}
+
+		output = readOutput(instance, res.ToI32())
+
+		// deallocate the memory used for the input and output
+		deallocate(instance, inPointer, len(input))
+		deallocate(instance, res.ToI32(), len(output))
+	})
+
 	if err != nil {
-		return nil, errors.Wrap(err, "failed to wasmRun")
+		return nil, err
 	}
-
-	output := readOutput(w.inst, res.ToI32())
-
-	// deallocate the memory used for the input and output
-	deallocate(w.inst, inPointer, len(input))
-	deallocate(w.inst, res.ToI32(), len(output))
 
 	return output, nil
 }
 
-// WasmBytes returns the raw bytes of the runner's wasm
-func (w *Runner) wasmBytes() ([]byte, error) {
-	if w.raw != nil {
-		return w.raw.Contents, nil
+// OnStart runs when a worker starts using this Runnable
+func (w *Runner) OnStart() error {
+	if err := w.context.addInstance(); err != nil {
+		return errors.Wrap(err, "failed to addInstance")
 	}
 
-	return wasm.ReadBytes(w.wasmFile)
+	return nil
 }
 
-func writeInput(inst *wasm.Instance, input string) int32 {
+func writeInput(inst wasm.Instance, input string) int32 {
 	lengthOfInput := len(input)
 
 	// Allocate memory for the input, and get a pointer to it.
@@ -103,7 +97,7 @@ func writeInput(inst *wasm.Instance, input string) int32 {
 	return inputPointer
 }
 
-func readOutput(inst *wasm.Instance, pointer int32) string {
+func readOutput(inst wasm.Instance, pointer int32) string {
 	memory := inst.Memory.Data()[pointer:]
 
 	nth := 0
@@ -121,7 +115,7 @@ func readOutput(inst *wasm.Instance, pointer int32) string {
 	return output.String()
 }
 
-func deallocate(inst *wasm.Instance, pointer int32, length int) {
+func deallocate(inst wasm.Instance, pointer int32, length int) {
 	dealloc := inst.Exports["deallocate"]
 
 	dealloc(pointer, length)

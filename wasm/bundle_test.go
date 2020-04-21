@@ -1,4 +1,4 @@
-package util
+package wasm
 
 import (
 	"os"
@@ -14,7 +14,7 @@ func TestReadBundle(t *testing.T) {
 		t.Error(errors.Wrap(err, "failed to get CWD"))
 	}
 
-	bundle, err := ReadBundle(filepath.Join(cwd, "../../runnables.wasm.zip"))
+	bundle, err := ReadBundle(filepath.Join(cwd, "./testdata/runnables.wasm.zip"))
 	if err != nil {
 		t.Error(errors.Wrap(err, "failed to ReadBundle"))
 		return

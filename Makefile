@@ -4,7 +4,7 @@ hivew:
 	go install ./hivew
 
 test:
-	go test -v ./...
+	go test -v --count=1 -p=1 ./...
 
 rs-build:
 	docker build . -f rs-builder/Dockerfile -t $(rs-img)
