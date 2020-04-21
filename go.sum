@@ -93,6 +93,10 @@ github.com/stretchr/testify v1.2.2/go.mod h1:a8OnRcib4nhh0OaRAV+Yts87kKdq0PP7pXf
 github.com/stretchr/testify v1.3.0/go.mod h1:M5WIy9Dh21IEIfnGCwXGc5bZfKNJtfHm1UVUgZn+9EI=
 github.com/suborbital/hive v0.0.7 h1:xKAU93C+gCyjXoH9P9Q6pqDc3Dzohl2HezyBlNgk5kQ=
 github.com/suborbital/hive v0.0.7/go.mod h1:HXQLVsHOrgIoKkfpOtqa2O25ZzZFrsSKazWQnhYprf0=
+github.com/suborbital/hive v0.0.8 h1:Sv4PV54avRTRgfK9RZNDXd8cRW7N/ACsiIiY7PClkkA=
+github.com/suborbital/hive v0.0.8/go.mod h1:KlFElWDGq5wrDQLyLjBC+QNvoJ2nCQzrTmA7k5F66nM=
+github.com/suborbital/hive v0.0.9 h1:uU8BvCsSWNKgFl56q8yT55xS8jEltv6EqRuqAyArAqg=
+github.com/suborbital/hive v0.0.9/go.mod h1:KlFElWDGq5wrDQLyLjBC+QNvoJ2nCQzrTmA7k5F66nM=
 github.com/suborbital/hivew v0.0.1/go.mod h1:S+ALr/fXc8B1ThyM/6AZK7MSxcaGEZDekcDHh/CgZAU=
 github.com/suborbital/vektor v0.0.6 h1:wvOW+npo0NYfjHnrosH79DfP/AG/JKGGFqYf/a+NuHI=
 github.com/suborbital/vektor v0.0.6/go.mod h1:dLFowE9BqURuHbkj05l6pxU2I7abCEJ0ONvV1hs7qxw=
