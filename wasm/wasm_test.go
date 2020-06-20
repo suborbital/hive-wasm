@@ -11,22 +11,22 @@ import (
 func TestWasmRunner(t *testing.T) {
 	h := hive.New()
 
-	doWasm := h.Handle("wasm", NewRunner("./testdata/wasm_runner_bg.wasm"))
+	doWasm := h.Handle("wasm", NewRunner("./testdata/helloworld-rs.wasm"))
 
 	res, err := doWasm("world").Then()
 	if err != nil {
 		t.Error(errors.Wrap(err, "failed to Then"))
 	}
 
-	if res.(string) != "hello world" {
-		t.Error(fmt.Errorf("expected 'hello world', got %s", res.(string)))
+	if res.(string) != "Hello world" {
+		t.Error(fmt.Errorf("expected 'Hello world', got %s", res.(string)))
 	}
 }
 
 func TestWasmRunnerGroup(t *testing.T) {
 	h := hive.New()
 
-	doWasm := h.Handle("wasm", NewRunner("./testdata/wasm_runner_bg.wasm"))
+	doWasm := h.Handle("wasm", NewRunner("./testdata/helloworld-rs.wasm"))
 
 	grp := hive.NewGroup()
 	for i := 0; i < 50000; i++ {
@@ -52,7 +52,7 @@ func TestWasmBundle(t *testing.T) {
 		return
 	}
 
-	if res.(string) != "hello wasmWorker!" {
+	if res.(string) != "Hello wasmWorker!" {
 		t.Error(fmt.Errorf("expected incorrect output, got %s", res.(string)))
 	}
 }
@@ -262,7 +262,7 @@ help@lipsum.com
 func TestWasmLargeData(t *testing.T) {
 	h := hive.New()
 
-	doWasm := h.Handle("wasm", NewRunner("./testdata/wasm_runner_bg.wasm"))
+	doWasm := h.Handle("wasm", NewRunner("./testdata/helloworld-rs.wasm"))
 
 	r := doWasm(largeInput)
 
@@ -279,7 +279,7 @@ func TestWasmLargeData(t *testing.T) {
 func TestWasmLargeDataGroup(t *testing.T) {
 	h := hive.New()
 
-	doWasm := h.Handle("wasm", NewRunner("./testdata/wasm_runner_bg.wasm"))
+	doWasm := h.Handle("wasm", NewRunner("./testdata/helloworld-rs.wasm"))
 
 	grp := hive.NewGroup()
 	for i := 0; i < 50000; i++ {
@@ -294,7 +294,7 @@ func TestWasmLargeDataGroup(t *testing.T) {
 func TestWasmLargeDataGroupWithPool(t *testing.T) {
 	h := hive.New()
 
-	doWasm := h.Handle("wasm", NewRunner("./testdata/wasm_runner_bg.wasm"), hive.PoolSize(20))
+	doWasm := h.Handle("wasm", NewRunner("./testdata/helloworld-rs.wasm"), hive.PoolSize(20))
 
 	grp := hive.NewGroup()
 	for i := 0; i < 50000; i++ {

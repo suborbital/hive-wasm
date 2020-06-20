@@ -51,7 +51,12 @@ func (c *Context) addInstance() error {
 		c.Raw = bytes
 	}
 
-	inst, err := wasm.NewInstance(c.Raw)
+	imports, err := wasm.NewDefaultWasiImportObjectForVersion(wasm.Snapshot1).Imports()
+	if err != nil {
+		return errors.Wrap(err, "failed to create Imports")
+	}
+
+	inst, err := wasm.NewInstanceWithImports(c.Raw, imports)
 	if err != nil {
 		return errors.Wrap(err, "failed to NewInstance")
 	}
