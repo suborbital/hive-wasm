@@ -13,4 +13,4 @@ Your `run.rs` should have a `run` function with this signature: `pub fn run(inpu
 
 Once your runnable directory is ready, run `hivew build` in the parent directory, and every directory with a `.hive.yml` will be built into a WASM runnable, with the resulting file being put inside the runnable directory.
 
-Head back to [the Hive WASM docs](https://github.com/suborbital/hive/blob/master/WASM.md) to learn how to use them!
+Head back to [the Hive WASM docs](https://github.com/suborbital/hive/blob/master/docs/wasm.md) to learn how to use them!
