@@ -12,13 +12,13 @@ import (
 
 //Runner represents a wasm-based runnable
 type Runner struct {
-	context *Context
+	env *Environment
 }
 
 // NewRunner returns a new *Runner
 func NewRunner(path string) *Runner {
 	w := &Runner{
-		context: &Context{
+		env: &Environment{
 			wasmFilePath: path,
 		},
 	}
@@ -26,16 +26,16 @@ func NewRunner(path string) *Runner {
 	return w
 }
 
-func newRunnerFromContext(ctx *Context) *Runner {
+func newRunnerFromEnvironment(env *Environment) *Runner {
 	w := &Runner{
-		context: ctx,
+		env: env,
 	}
 
 	return w
 }
 
 // Run runs a Runner
-func (w *Runner) Run(job hive.Job, run hive.RunFunc) (interface{}, error) {
+func (w *Runner) Run(job hive.Job, do hive.DoFunc) (interface{}, error) {
 	input, ok := job.Data().(string)
 	if !ok {
 		return nil, errors.New("failed to run WASM job, input is not string")
@@ -44,7 +44,7 @@ func (w *Runner) Run(job hive.Job, run hive.RunFunc) (interface{}, error) {
 	var output string
 	var err error
 
-	w.context.useInstance(func(instance wasm.Instance) {
+	w.env.useInstance(func(instance wasm.Instance) {
 		inPointer := writeInput(instance, input)
 
 		wasmRun := instance.Exports["run_e"]
@@ -70,7 +70,7 @@ func (w *Runner) Run(job hive.Job, run hive.RunFunc) (interface{}, error) {
 
 // OnStart runs when a worker starts using this Runnable
 func (w *Runner) OnStart() error {
-	if err := w.context.addInstance(); err != nil {
+	if err := w.env.addInstance(); err != nil {
 		return errors.Wrap(err, "failed to addInstance")
 	}
 

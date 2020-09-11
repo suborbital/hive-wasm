@@ -7,8 +7,8 @@ import (
 	wasm "github.com/wasmerio/go-ext-wasm/wasmer"
 )
 
-// Context is the raw data from a WASM file
-type Context struct {
+// Environment is the raw data from a WASM file
+type Environment struct {
 	Name         string
 	wasmFilePath string
 	Raw          []byte
@@ -22,7 +22,7 @@ type instance struct {
 }
 
 // getInstance returns a wasmer instance
-func (c *Context) useInstance(instFunc func(wasm.Instance)) {
+func (c *Environment) useInstance(instFunc func(wasm.Instance)) {
 	if c.index == len(c.instances)-1 {
 		c.index = 0
 	} else {
@@ -36,7 +36,7 @@ func (c *Context) useInstance(instFunc func(wasm.Instance)) {
 	instFunc(inst.instance)
 }
 
-func (c *Context) addInstance() error {
+func (c *Environment) addInstance() error {
 	if c.instances == nil {
 		c.instances = []instance{}
 		c.index = 0
