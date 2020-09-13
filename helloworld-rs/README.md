@@ -9,8 +9,13 @@ To create a Rust-based WASM Runnable, use the `hivew` CLI to build it. Create a 
 ```
 `name-of-runnable` should match the `name` field in Cargo.toml.
 
-Your `run.rs` should have a `run` function with this signature: `pub fn run(input: String) -> Option<String>`. You can put whatever you want into this function, so long as it'll run in a WASI environment!
+Your `run.rs` should have a `run` function with this signature: 
+```rust
+#[no_mangle]
+pub fn run(input: Vec<u8>) -> Option<Vec<u8>>
+```
+You can put whatever you want into this function, so long as it'll run in a WASI environment!
 
-Once your runnable directory is ready, run `hivew build` in the parent directory, and every directory with a `.hive.yml` will be built into a WASM runnable, with the resulting file being put inside the runnable directory.
+Once your runnable is ready, run `hivew build` in the parent directory, and every directory with a `.hive.yml` will be built into a WASM runnable, with the resulting file being put inside the runnable directory.
 
 Head back to [the Hive WASM docs](https://github.com/suborbital/hive/blob/master/docs/wasm.md) to learn how to use them!

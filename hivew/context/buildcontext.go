@@ -9,7 +9,7 @@ import (
 )
 
 var dockerImageForLang = map[string]string{
-	"rust": "suborbital/hive-rs:1.44",
+	"rust": "suborbital/hive-rs:1.46.0-1",
 }
 
 // BuildContext describes the context under which the tool is being run

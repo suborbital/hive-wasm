@@ -2,7 +2,7 @@
 
 WASM toolchain for [Hive](https://github.com/suborbital/hive)
 
-The Hive job scheduler aims for WASM to be a first-class citizen. `hivew` is the central toolchain for Hive and WASM. The `hivew` CLI can build WASM Runnables, and can package many WASM Runnables into deployable bundles. It will soon be able to act as an all-in-one Hive server, using the upcoming FaaS functionality in Hive.
+The Hive job scheduler aims for WASM to be a first-class citizen. `hivew` is the toolchain for Hive and WASM. The `hivew` CLI can build WASM Runnables, and can package many WASM Runnables into a deployable bundle. It will soon be able to act as an all-in-one Hive server, using Hive's FaaS functionality.
 
 Docker must be installed to build WASM Runnables.
 

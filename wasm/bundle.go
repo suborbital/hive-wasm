@@ -25,7 +25,7 @@ func HandleBundle(h *hive.Hive, path string) error {
 	}
 
 	for i, r := range bundle.Runnables {
-		runner := newRunnerFromContext(&bundle.Runnables[i])
+		runner := newRunnerWithEnvironment(bundle.Runnables[i])
 
 		jobName := strings.Replace(r.Name, ".wasm", "", -1)
 		h.Handle(jobName, runner)
@@ -77,7 +77,7 @@ func WriteBundle(files []os.File, targetPath string) error {
 
 // Bundle represents a Runnable bundle
 type Bundle struct {
-	Runnables []Context
+	Runnables []*wasmEnvironment
 }
 
 // ReadBundle reads a .wasm.zip file and returns the bundle of wasm files within as raw bytes
@@ -91,30 +91,28 @@ func ReadBundle(path string) (*Bundle, error) {
 
 	defer r.Close()
 
-	bundle := &Bundle{make([]Context, len(r.File))}
+	bundle := &Bundle{make([]*wasmEnvironment, len(r.File))}
 
 	// Iterate through the files in the archive,
 
 	for i, f := range r.File {
-		ctx := Context{
-			Name: f.Name,
-		}
+		env := newEnvironment(f.Name, "")
 
 		rc, err := f.Open()
 		if err != nil {
 			return nil, errors.Wrapf(err, "failed to open %s from bundle", f.Name)
 		}
 
-		bytes, err := ioutil.ReadAll(rc)
+		wasmBytes, err := ioutil.ReadAll(rc)
 		if err != nil {
 			return nil, errors.Wrapf(err, "failed to read %s from bundle", f.Name)
 		}
 
 		rc.Close()
 
-		ctx.Raw = bytes
+		env.setRaw(wasmBytes)
 
-		bundle.Runnables[i] = ctx
+		bundle.Runnables[i] = env
 	}
 
 	return bundle, nil
