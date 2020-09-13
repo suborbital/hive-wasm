@@ -8,18 +8,36 @@ import (
 	"github.com/suborbital/hive/hive"
 )
 
+func TestWasmRunnerRaw(t *testing.T) {
+	h := hive.New()
+
+	// test a WASM module that was directly compiled from the hivew-rs-builder repo
+	doWasm := h.Handle("wasm", NewRunner("./testdata/hivew_rs_builder.wasm"))
+
+	res, err := doWasm([]byte("there")).Then()
+	if err != nil {
+		t.Error(errors.Wrap(err, "failed to Then"))
+		return
+	}
+
+	if string(res.([]byte)) != "hello there" {
+		t.Error(fmt.Errorf("expected 'hello there', got %q", string(res.([]byte))))
+	}
+}
+
 func TestWasmRunner(t *testing.T) {
 	h := hive.New()
 
+	// test a WASM module that was compiled with the hivew CLI
 	doWasm := h.Handle("wasm", NewRunner("./testdata/helloworld-rs.wasm"))
 
-	res, err := doWasm("world").Then()
+	res, err := doWasm([]byte("what is up")).Then()
 	if err != nil {
 		t.Error(errors.Wrap(err, "failed to Then"))
 	}
 
-	if res.(string) != "Hello world" {
-		t.Error(fmt.Errorf("expected 'Hello world', got %s", res.(string)))
+	if string(res.([]byte)) != "hello what is up" {
+		t.Error(fmt.Errorf("expected 'hello, what is up', got %s", string(res.([]byte))))
 	}
 }
 
@@ -30,7 +48,7 @@ func TestWasmRunnerGroup(t *testing.T) {
 
 	grp := hive.NewGroup()
 	for i := 0; i < 50000; i++ {
-		grp.Add(doWasm(fmt.Sprintf("world %d", i)))
+		grp.Add(doWasm([]byte(fmt.Sprintf("world %d", i))))
 	}
 
 	if err := grp.Wait(); err != nil {
@@ -46,14 +64,14 @@ func TestWasmBundle(t *testing.T) {
 		return
 	}
 
-	res, err := h.Do(hive.NewJob("helloworld-rs", "wasmWorker!")).Then()
+	res, err := h.Do(hive.NewJob("helloworld-rs", []byte("wasmWorker!"))).Then()
 	if err != nil {
 		t.Error(errors.Wrap(err, "Then returned error"))
 		return
 	}
 
-	if res.(string) != "Hello wasmWorker!" {
-		t.Error(fmt.Errorf("expected incorrect output, got %s", res.(string)))
+	if string(res.([]byte)) != "hello wasmWorker!" {
+		t.Error(fmt.Errorf("expected 'hello wasmWorker!', got %s", string(res.([]byte))))
 	}
 }
 
@@ -264,15 +282,15 @@ func TestWasmLargeData(t *testing.T) {
 
 	doWasm := h.Handle("wasm", NewRunner("./testdata/helloworld-rs.wasm"))
 
-	r := doWasm(largeInput)
+	r := doWasm([]byte(largeInput))
 
 	res, err := r.Then()
 	if err != nil {
 		t.Error(errors.Wrap(err, "failed to Then for large input"))
 	}
 
-	if len(res.(string)) < 64000 {
-		t.Error(fmt.Errorf("large input job result too small, got %d", len(res.(string))))
+	if len(string(res.([]byte))) < 64000 {
+		t.Error(fmt.Errorf("large input job result too small, got %d", len(string(res.([]byte)))))
 	}
 }
 
@@ -283,7 +301,7 @@ func TestWasmLargeDataGroup(t *testing.T) {
 
 	grp := hive.NewGroup()
 	for i := 0; i < 50000; i++ {
-		grp.Add(doWasm(largeInput))
+		grp.Add(doWasm([]byte(largeInput)))
 	}
 
 	if err := grp.Wait(); err != nil {
@@ -298,7 +316,7 @@ func TestWasmLargeDataGroupWithPool(t *testing.T) {
 
 	grp := hive.NewGroup()
 	for i := 0; i < 50000; i++ {
-		grp.Add(doWasm(largeInput))
+		grp.Add(doWasm([]byte(largeInput)))
 	}
 
 	if err := grp.Wait(); err != nil {
