@@ -41,6 +41,22 @@ func TestWasmRunner(t *testing.T) {
 	}
 }
 
+func TestWasmRunnerDataConversion(t *testing.T) {
+	h := hive.New()
+
+	// test a WASM module that was compiled with the hivew CLI
+	doWasm := h.Handle("wasm", NewRunner("./testdata/helloworld-rs.wasm"))
+
+	res, err := doWasm("my name is joe").Then()
+	if err != nil {
+		t.Error(errors.Wrap(err, "failed to Then"))
+	}
+
+	if string(res.([]byte)) != "hello my name is joe" {
+		t.Error(fmt.Errorf("expected 'hello my name is joe', got %s", string(res.([]byte))))
+	}
+}
+
 func TestWasmRunnerGroup(t *testing.T) {
 	h := hive.New()
 
@@ -291,6 +307,10 @@ func TestWasmLargeData(t *testing.T) {
 
 	if len(string(res.([]byte))) < 64000 {
 		t.Error(fmt.Errorf("large input job result too small, got %d", len(string(res.([]byte)))))
+	}
+
+	if string(res.([]byte)) != fmt.Sprintf("hello %s", largeInput) {
+		t.Error(fmt.Errorf("large input result did not match"))
 	}
 }
 
