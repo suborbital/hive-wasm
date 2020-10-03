@@ -1,14 +1,5 @@
 package wasm
 
-// #include <stdlib.h>
-//
-// extern void return_result(void *context, int32_t pointer, int32_t size, int32_t envIndex, int32_t instIndex);
-import "C"
-import (
-	"net/http"
-	"unsafe"
-)
-
 /*
  In order to allow "easy" communication of data across the FFI barrier (outbound Go -> WASM and inbound WASM -> Go), hivew provides
  an FFI API. Functions exported from a WASM module can be easily called by Go code via the Wasmer instance exports, but returning data
@@ -24,40 +15,10 @@ import (
  the way Go makes functions available on the FFI using CGO.
 */
 
-///////////////////////////////////////////////////////////////
-// below is the "hivew API" used for cross-FFI communication //
-///////////////////////////////////////////////////////////////
-
-//export return_result
-func return_result(context unsafe.Pointer, pointer int32, size int32, envIndex int32, instIndex int32) {
-	// TODO: make it impossible for a module to call out to another instance (obfucate the indices?)
-	envLock.RLock()
-	defer envLock.RUnlock()
-
-	inst := instanceAtIndices(envIndex, instIndex)
-	if inst == nil {
-		// not sure what to do here
-		return
-	}
-
-	result := inst.readMemory(pointer, size)
-
-	inst.resultChan <- result
-}
-
-// export fetch
-func fetch(context unsafe.Pointer, urlPointer int32, urlSize int32, envIndex int32, instIndex int32) int32 {
-	// fetch makes a network request on bahalf of the wasm runner.
-	// fetch writes the http response body into memory starting at returnBodyPointer, and the return value is a pointer to that memory
-	urlBytes, err := 
-	req := http.NewRequest(http.MethodGet, )
-	return 0
-}
-
 /////////////////////////////////////////////////////////////////////////////
 // below is the wasm glue code used to manipulate wasm instance memory     //
 // this requires a set of functions to be available within the wasm module //
-// - allocate_input                                                        //
+// - allocate                                                              //
 // - deallocate                                                            //
 /////////////////////////////////////////////////////////////////////////////
 
@@ -72,21 +33,27 @@ func (w *wasmInstance) readMemory(pointer int32, size int32) []byte {
 	return result
 }
 
-func (w *wasmInstance) writeInput(input []byte) int32 {
-	lengthOfInput := len(input)
+func (w *wasmInstance) writeMemory(data []byte) int32 {
+	lengthOfInput := len(data)
 
 	// Allocate memory for the input, and get a pointer to it.
-	allocateResult, _ := w.wasmerInst.Exports["allocate_input"](lengthOfInput)
-	inputPointer := allocateResult.ToI32()
+	allocateResult, _ := w.wasmerInst.Exports["allocate"](lengthOfInput)
+	pointer := allocateResult.ToI32()
+
+	w.writeMemoryAtLocation(pointer, data)
+
+	return pointer
+}
+
+func (w *wasmInstance) writeMemoryAtLocation(pointer int32, data []byte) {
+	lengthOfInput := len(data)
 
 	// Write the input into the memory.
-	memory := w.wasmerInst.Memory.Data()[inputPointer:]
+	memory := w.wasmerInst.Memory.Data()[pointer:]
 
 	for index := 0; index < lengthOfInput; index++ {
-		memory[index] = input[index]
+		memory[index] = data[index]
 	}
-
-	return inputPointer
 }
 
 func (w *wasmInstance) deallocate(pointer int32, length int) {

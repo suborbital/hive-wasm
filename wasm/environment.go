@@ -1,7 +1,18 @@
 package wasm
 
+// #include <stdlib.h>
+//
+// extern void return_result(void *context, int32_t pointer, int32_t size, int32_t envIndex, int32_t instIndex);
+// extern int32_t fetch(void *context, int32_t urlPointer, int32_t urlSize, int32_t destPointer, int32_t destMaxSize, int32_t envIndex, int32_t instIndex);
+// extern void print(void *context, int32_t pointer, int32_t size, int32_t envIndex, int32_t instIndex);
+import "C"
+
 import (
+	"fmt"
+	"io/ioutil"
+	"net/http"
 	"sync"
+	"unsafe"
 
 	"github.com/pkg/errors"
 	"github.com/wasmerio/wasmer-go/wasmer"
@@ -90,6 +101,8 @@ func (w *wasmEnvironment) addInstance() error {
 	}
 
 	imports.AppendFunction("return_result", return_result, C.return_result)
+	imports.AppendFunction("fetch", fetch, C.fetch)
+	imports.AppendFunction("print", print, C.print)
 
 	inst, err := wasmer.NewInstanceWithImports(w.raw, imports)
 	if err != nil {
@@ -125,4 +138,76 @@ func (w *wasmEnvironment) setRaw(raw []byte) {
 func init() {
 	environments = []*wasmEnvironment{}
 	envLock = sync.RWMutex{}
+}
+
+////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+// below is the "hivew API" which grants capabilites to WASM runnables by routing things like network requests through the host (Go) code //
+////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+
+//export return_result
+func return_result(context unsafe.Pointer, pointer int32, size int32, envIndex int32, instIndex int32) {
+	// TODO: make it impossible for a module to call out to another instance (obfucate the indices?)
+	envLock.RLock()
+	defer envLock.RUnlock()
+
+	inst := instanceAtIndices(envIndex, instIndex)
+	if inst == nil {
+		// not sure what to do here
+		return
+	}
+
+	result := inst.readMemory(pointer, size)
+
+	inst.resultChan <- result
+}
+
+//export fetch
+func fetch(context unsafe.Pointer, urlPointer int32, urlSize int32, destPointer int32, destMaxSize int32, envIndex int32, instIndex int32) int32 {
+	// fetch makes a network request on bahalf of the wasm runner.
+	// fetch writes the http response body into memory starting at returnBodyPointer, and the return value is a pointer to that memory
+	inst := instanceAtIndices(envIndex, instIndex)
+	if inst == nil {
+		fmt.Println("couldn't find inst")
+		return -1
+	}
+
+	urlBytes := inst.readMemory(urlPointer, urlSize)
+
+	req, err := http.NewRequest(http.MethodGet, string(urlBytes), nil)
+	if err != nil {
+		fmt.Println("failed to build request")
+		return -2
+	}
+
+	resp, err := http.DefaultClient.Do(req)
+	if err != nil {
+		fmt.Println("failed to Do request")
+		return -3
+	}
+
+	defer resp.Body.Close()
+	respBytes, err := ioutil.ReadAll(resp.Body)
+	if err != nil {
+		fmt.Println("failed to Read response body")
+		return -4
+	}
+
+	if len(respBytes) <= int(destMaxSize) {
+		inst.writeMemoryAtLocation(destPointer, respBytes)
+	}
+
+	return int32(len(respBytes))
+}
+
+//export print
+func print(context unsafe.Pointer, pointer int32, size int32, envIndex int32, instIndex int32) {
+	inst := instanceAtIndices(envIndex, instIndex)
+	if inst == nil {
+		fmt.Println("print: couldn't find inst")
+	}
+
+	msgBytes := inst.readMemory(pointer, size)
+	msg := fmt.Sprintf("[%d:%d]: %s", envIndex, instIndex, string(msgBytes))
+
+	fmt.Println(msg)
 }

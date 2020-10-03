@@ -36,7 +36,7 @@ func (w *Runner) Run(job hive.Job, do hive.DoFunc) (interface{}, error) {
 	var output []byte
 
 	w.env.useInstance(func(instance *wasmInstance) {
-		inPointer := instance.writeInput(inputBytes)
+		inPointer := instance.writeMemory(inputBytes)
 
 		wasmRun := instance.wasmerInst.Exports["run_e"]
 
