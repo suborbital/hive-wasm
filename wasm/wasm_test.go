@@ -34,6 +34,7 @@ func TestWasmRunner(t *testing.T) {
 	res, err := doWasm([]byte("what is up")).Then()
 	if err != nil {
 		t.Error(errors.Wrap(err, "failed to Then"))
+		return
 	}
 
 	if string(res.([]byte)) != "hello what is up" {

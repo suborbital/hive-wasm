@@ -1,5 +1,9 @@
 package wasm
 
+import (
+	"github.com/pkg/errors"
+)
+
 /*
  In order to allow "easy" communication of data across the FFI barrier (outbound Go -> WASM and inbound WASM -> Go), hivew provides
  an FFI API. Functions exported from a WASM module can be easily called by Go code via the Wasmer instance exports, but returning data
@@ -33,16 +37,25 @@ func (w *wasmInstance) readMemory(pointer int32, size int32) []byte {
 	return result
 }
 
-func (w *wasmInstance) writeMemory(data []byte) int32 {
+func (w *wasmInstance) writeMemory(data []byte) (int32, error) {
 	lengthOfInput := len(data)
 
+	allocate := w.wasmerInst.Exports["allocate"]
+	if allocate == nil {
+		return -1, errors.New("missing required FFI function: allocate")
+	}
+
 	// Allocate memory for the input, and get a pointer to it.
-	allocateResult, _ := w.wasmerInst.Exports["allocate"](lengthOfInput)
+	allocateResult, err := allocate(lengthOfInput)
+	if err != nil {
+		return -1, errors.Wrap(err, "failed to call allocate")
+	}
+
 	pointer := allocateResult.ToI32()
 
 	w.writeMemoryAtLocation(pointer, data)
 
-	return pointer
+	return pointer, nil
 }
 
 func (w *wasmInstance) writeMemoryAtLocation(pointer int32, data []byte) {

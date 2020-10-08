@@ -11,6 +11,7 @@ import (
 	"fmt"
 	"io/ioutil"
 	"net/http"
+	"net/url"
 	"sync"
 	"unsafe"
 
@@ -173,7 +174,13 @@ func fetch(context unsafe.Pointer, urlPointer int32, urlSize int32, destPointer 
 
 	urlBytes := inst.readMemory(urlPointer, urlSize)
 
-	req, err := http.NewRequest(http.MethodGet, string(urlBytes), nil)
+	urlObj, err := url.Parse(string(urlBytes))
+	if err != nil {
+		fmt.Println("couldn't parse URL")
+		return -2
+	}
+
+	req, err := http.NewRequest(http.MethodGet, urlObj.String(), nil)
 	if err != nil {
 		fmt.Println("failed to build request")
 		return -2

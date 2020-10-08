@@ -36,9 +36,17 @@ func (w *Runner) Run(job hive.Job, do hive.DoFunc) (interface{}, error) {
 	var output []byte
 
 	w.env.useInstance(func(instance *wasmInstance) {
-		inPointer := instance.writeMemory(inputBytes)
+		inPointer, writeErr := instance.writeMemory(inputBytes)
+		if err != nil {
+			err = errors.Wrap(writeErr, "failed to instance.writeMemory")
+			return
+		}
 
 		wasmRun := instance.wasmerInst.Exports["run_e"]
+		if wasmRun == nil {
+			err = errors.New("missing required FFI function: run_e")
+			return
+		}
 
 		if _, wasmErr := wasmRun(inPointer, len(inputBytes), instance.envIndex, instance.instIndex); wasmErr != nil {
 			err = errors.Wrap(wasmErr, "failed to wasmRun")
