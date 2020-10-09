@@ -3,7 +3,7 @@ module github.com/suborbital/hivew
 go 1.14
 
 require (
-	github.com/google/uuid v1.1.2 // indirect
+	github.com/google/uuid v1.1.2
 	github.com/pkg/errors v0.9.1
 	github.com/sethvargo/go-envconfig v0.3.1 // indirect
 	github.com/spf13/cobra v1.0.0

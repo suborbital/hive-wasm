@@ -2,46 +2,60 @@ package wasm
 
 // #include <stdlib.h>
 //
-// extern void return_result(void *context, int32_t pointer, int32_t size, int32_t envIndex, int32_t instIndex);
-// extern int32_t fetch(void *context, int32_t urlPointer, int32_t urlSize, int32_t destPointer, int32_t destMaxSize, int32_t envIndex, int32_t instIndex);
-// extern void print(void *context, int32_t pointer, int32_t size, int32_t envIndex, int32_t instIndex);
+// extern void return_result(void *context, int32_t pointer, int32_t size, int32_t ident);
+// extern int32_t fetch(void *context, int32_t urlPointer, int32_t urlSize, int32_t destPointer, int32_t destMaxSize, int32_t ident);
+// extern void print(void *context, int32_t pointer, int32_t size, int32_t ident);
 import "C"
 
 import (
+	"crypto/rand"
 	"fmt"
 	"io/ioutil"
+	"math"
+	"math/big"
 	"net/http"
 	"net/url"
 	"sync"
 	"unsafe"
 
+	"github.com/google/uuid"
 	"github.com/pkg/errors"
 	"github.com/wasmerio/wasmer-go/wasmer"
 )
 
-var environments []*wasmEnvironment
+// the globally shared set of Wasm environments, accessed by UUID
+var environments = map[string]*wasmEnvironment{}
+
+// a lock to ensure the environments array is concurrency safe (didn't use sync.Map to prevent type coersion)
 var envLock = sync.RWMutex{}
+
+// the instance mapper maps a random int32 to a wasm instance to prevent malicious access to other instances via the FFI
+var instanceMapper = sync.Map{}
 
 // wasmEnvironment is an wasmEnvironment in which WASM instances run
 type wasmEnvironment struct {
 	Name      string
+	UUID      string
 	filepath  string
 	raw       []byte
 	instances []*wasmInstance
 
-	// meta related to this env's position in the shared array, and the index of the last used wasmInstance
-	envIndex  int
+	// the index of the last used wasm instance
 	instIndex int
+	lock      sync.Mutex
 }
 
 type wasmInstance struct {
 	wasmerInst wasmer.Instance
 	resultChan chan []byte
 	lock       sync.Mutex
+}
 
-	// meta related to this env's position in the shared array, and the index of this wasmInstance in the environment
-	envIndex  int
-	instIndex int
+// instanceReference is a "pointer" to the global environments array and the
+// wasm instances within each environment
+type instanceReference struct {
+	EnvUUID   string
+	InstIndex int
 }
 
 // newEnvironment creates a new environment and adds it to the shared environments array
@@ -52,34 +66,55 @@ func newEnvironment(name string, filepath string) *wasmEnvironment {
 
 	e := &wasmEnvironment{
 		Name:      name,
+		UUID:      uuid.New().String(),
 		filepath:  filepath,
 		instances: []*wasmInstance{},
-		envIndex:  len(environments),
 		instIndex: 0,
+		lock:      sync.Mutex{},
 	}
 
-	environments = append(environments, e)
+	environments[e.UUID] = e
 
 	return e
 }
 
 // useInstance provides an instance from the environment's pool to be used
-func (w *wasmEnvironment) useInstance(instFunc func(*wasmInstance)) {
+func (w *wasmEnvironment) useInstance(instFunc func(*wasmInstance, int32)) error {
+	w.lock.Lock()
+
 	if w.instIndex == len(w.instances)-1 {
 		w.instIndex = 0
 	} else {
 		w.instIndex++
 	}
 
-	inst := w.instances[w.instIndex]
+	instIndex := w.instIndex
+	inst := w.instances[instIndex]
+
+	w.lock.Unlock() // now that we've acquired our instance, let the next one go
+
 	inst.lock.Lock()
 	defer inst.lock.Unlock()
 
-	instFunc(inst)
+	// generate a random identifier as a reference to the instance in use to
+	// easily allow the Wasm module to reference itself when calling back over the FFI
+	ident, err := setupNewIdentifier(w.UUID, instIndex)
+	if err != nil {
+		return errors.Wrap(err, "failed to setupNewIdentifier")
+	}
+
+	instFunc(inst, ident)
+
+	removeIdentifier(ident)
+
+	return nil
 }
 
 // addInstance adds a new WASM instance to the environment's pool
 func (w *wasmEnvironment) addInstance() error {
+	w.lock.Lock()
+	defer w.lock.Unlock()
+
 	if w.raw == nil || len(w.raw) == 0 {
 		bytes, err := wasmer.ReadBytes(w.filepath)
 		if err != nil {
@@ -87,13 +122,6 @@ func (w *wasmEnvironment) addInstance() error {
 		}
 
 		w.raw = bytes
-	}
-
-	instance := &wasmInstance{
-		resultChan: make(chan []byte, 1),
-		lock:       sync.Mutex{},
-		envIndex:   w.envIndex,
-		instIndex:  len(w.instances),
 	}
 
 	imports, err := wasmer.NewDefaultWasiImportObjectForVersion(wasmer.Snapshot1).Imports()
@@ -110,25 +138,15 @@ func (w *wasmEnvironment) addInstance() error {
 		return errors.Wrap(err, "failed to NewInstance")
 	}
 
-	instance.wasmerInst = inst
+	instance := &wasmInstance{
+		wasmerInst: inst,
+		resultChan: make(chan []byte, 1),
+		lock:       sync.Mutex{},
+	}
 
 	w.instances = append(w.instances, instance)
 
 	return nil
-}
-
-func instanceAtIndices(envIndex int32, instIndex int32) *wasmInstance {
-	if int(envIndex) > len(environments)-1 {
-		return nil
-	}
-
-	env := environments[envIndex]
-
-	if int(instIndex) > len(env.instances)-1 {
-		return nil
-	}
-
-	return env.instances[instIndex]
 }
 
 // setRaw sets the raw bytes of a WASM module to be used rather than a filepath
@@ -136,9 +154,67 @@ func (w *wasmEnvironment) setRaw(raw []byte) {
 	w.raw = raw
 }
 
-func init() {
-	environments = []*wasmEnvironment{}
-	envLock = sync.RWMutex{}
+func setupNewIdentifier(envUUID string, instIndex int) (int32, error) {
+	for {
+		ident, err := randomIdentifier()
+		if err != nil {
+			return -1, errors.Wrap(err, "failed to randomIdentifier")
+		}
+
+		// ensure we don't accidentally overwrite something else
+		// (however unlikely that may be)
+		if _, exists := instanceMapper.Load(ident); exists {
+			continue
+		}
+
+		ref := instanceReference{
+			EnvUUID:   envUUID,
+			InstIndex: instIndex,
+		}
+
+		instanceMapper.Store(ident, ref)
+
+		return ident, nil
+	}
+}
+
+func removeIdentifier(ident int32) {
+	instanceMapper.Delete(ident)
+}
+
+func instanceForIdentifier(ident int32) (*wasmInstance, error) {
+	rawRef, exists := instanceMapper.Load(ident)
+	if !exists {
+		return nil, errors.New("instance does not exist")
+	}
+
+	ref := rawRef.(instanceReference)
+
+	envLock.RLock()
+	defer envLock.RUnlock()
+
+	env, exists := environments[ref.EnvUUID]
+	if !exists {
+		return nil, errors.New("environment does not exist")
+	}
+
+	if len(env.instances) <= ref.InstIndex-1 {
+		return nil, errors.New("invalid instance index")
+	}
+
+	inst := env.instances[ref.InstIndex]
+
+	return inst, nil
+}
+
+func randomIdentifier() (int32, error) {
+	// generate a random number between 0 and the largest possible int32
+	num, err := rand.Int(rand.Reader, big.NewInt(math.MaxInt32))
+	if err != nil {
+		return -1, errors.Wrap(err, "failed to rand.Int")
+	}
+
+	return int32(num.Int64()), nil
 }
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
@@ -146,14 +222,14 @@ func init() {
 ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
 //export return_result
-func return_result(context unsafe.Pointer, pointer int32, size int32, envIndex int32, instIndex int32) {
+func return_result(context unsafe.Pointer, pointer int32, size int32, identifier int32) {
 	// TODO: make it impossible for a module to call out to another instance (obfucate the indices?)
 	envLock.RLock()
 	defer envLock.RUnlock()
 
-	inst := instanceAtIndices(envIndex, instIndex)
-	if inst == nil {
-		// not sure what to do here
+	inst, err := instanceForIdentifier(identifier)
+	if err != nil {
+		fmt.Println(errors.Wrap(err, "[hivew] alert: invalid identifier used, potential malicious activity"))
 		return
 	}
 
@@ -163,12 +239,12 @@ func return_result(context unsafe.Pointer, pointer int32, size int32, envIndex i
 }
 
 //export fetch
-func fetch(context unsafe.Pointer, urlPointer int32, urlSize int32, destPointer int32, destMaxSize int32, envIndex int32, instIndex int32) int32 {
+func fetch(context unsafe.Pointer, urlPointer int32, urlSize int32, destPointer int32, destMaxSize int32, identifier int32) int32 {
 	// fetch makes a network request on bahalf of the wasm runner.
 	// fetch writes the http response body into memory starting at returnBodyPointer, and the return value is a pointer to that memory
-	inst := instanceAtIndices(envIndex, instIndex)
-	if inst == nil {
-		fmt.Println("couldn't find inst")
+	inst, err := instanceForIdentifier(identifier)
+	if err != nil {
+		fmt.Println(errors.Wrap(err, "[hivew] alert: invalid identifier used, potential malicious activity"))
 		return -1
 	}
 
@@ -207,14 +283,15 @@ func fetch(context unsafe.Pointer, urlPointer int32, urlSize int32, destPointer 
 }
 
 //export print
-func print(context unsafe.Pointer, pointer int32, size int32, envIndex int32, instIndex int32) {
-	inst := instanceAtIndices(envIndex, instIndex)
-	if inst == nil {
-		fmt.Println("print: couldn't find inst")
+func print(context unsafe.Pointer, pointer int32, size int32, identifier int32) {
+	inst, err := instanceForIdentifier(identifier)
+	if err != nil {
+		fmt.Println(errors.Wrap(err, "[hivew] alert: invalid identifier used, potential malicious activity"))
+		return
 	}
 
 	msgBytes := inst.readMemory(pointer, size)
-	msg := fmt.Sprintf("[%d:%d]: %s", envIndex, instIndex, string(msgBytes))
+	msg := fmt.Sprintf("[%d]: %s", identifier, string(msgBytes))
 
 	fmt.Println(msg)
 }
