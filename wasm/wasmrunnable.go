@@ -34,14 +34,24 @@ func (w *Runner) Run(job hive.Job, do hive.DoFunc) (interface{}, error) {
 	}
 
 	var output []byte
+	var runErr error
 
-	w.env.useInstance(func(instance *wasmInstance) {
-		inPointer := instance.writeInput(inputBytes)
+	if err := w.env.useInstance(func(instance *wasmInstance, ident int32) {
+		inPointer, writeErr := instance.writeMemory(inputBytes)
+		if writeErr != nil {
+			runErr = errors.Wrap(writeErr, "failed to instance.writeMemory")
+			return
+		}
 
 		wasmRun := instance.wasmerInst.Exports["run_e"]
+		if wasmRun == nil {
+			runErr = errors.New("missing required FFI function: run_e")
+			return
+		}
 
-		if _, wasmErr := wasmRun(inPointer, len(inputBytes), instance.envIndex, instance.instIndex); wasmErr != nil {
-			err = errors.Wrap(wasmErr, "failed to wasmRun")
+		// ident is a random identifier for this job run that allows for "easy" FFI function calls in both directions
+		if _, wasmErr := wasmRun(inPointer, len(inputBytes), ident); wasmErr != nil {
+			runErr = errors.Wrap(wasmErr, "failed to wasmRun")
 			return
 		}
 
@@ -49,10 +59,12 @@ func (w *Runner) Run(job hive.Job, do hive.DoFunc) (interface{}, error) {
 
 		// deallocate the memory used for the input
 		instance.deallocate(inPointer, len(inputBytes))
-	})
+	}); err != nil {
+		return nil, errors.Wrap(err, "failed to useInstance")
+	}
 
-	if err != nil {
-		return nil, err
+	if runErr != nil {
+		return nil, errors.Wrap(err, "failed to execute Wasm Runnable")
 	}
 
 	return output, nil

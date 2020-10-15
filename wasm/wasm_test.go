@@ -8,20 +8,20 @@ import (
 	"github.com/suborbital/hive/hive"
 )
 
-func TestWasmRunnerRaw(t *testing.T) {
+func TestWasmRunnerRawWithFetch(t *testing.T) {
 	h := hive.New()
 
 	// test a WASM module that was directly compiled from the hivew-rs-builder repo
 	doWasm := h.Handle("wasm", NewRunner("./testdata/hivew_rs_builder.wasm"))
 
-	res, err := doWasm([]byte("there")).Then()
+	res, err := doWasm("https://1password.com").Then()
 	if err != nil {
 		t.Error(errors.Wrap(err, "failed to Then"))
 		return
 	}
 
-	if string(res.([]byte)) != "hello there" {
-		t.Error(fmt.Errorf("expected 'hello there', got %q", string(res.([]byte))))
+	if string(res.([]byte))[:100] != "<!doctype html><html lang=en data-language-url=/><head><meta charset=utf-8><meta name=viewport conte" {
+		t.Error(fmt.Errorf("expected 1password.com HTML, got %q", string(res.([]byte))[:100]))
 	}
 }
 
@@ -34,6 +34,7 @@ func TestWasmRunner(t *testing.T) {
 	res, err := doWasm([]byte("what is up")).Then()
 	if err != nil {
 		t.Error(errors.Wrap(err, "failed to Then"))
+		return
 	}
 
 	if string(res.([]byte)) != "hello what is up" {
