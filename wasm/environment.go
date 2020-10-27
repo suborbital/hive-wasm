@@ -3,8 +3,12 @@ package wasm
 // #include <stdlib.h>
 //
 // extern void return_result(void *context, int32_t pointer, int32_t size, int32_t ident);
+// extern void return_result_swift(void *context, int32_t pointer, int32_t size, int32_t ident, int32_t swiftself, int32_t swifterr);
+//
 // extern int32_t fetch(void *context, int32_t urlPointer, int32_t urlSize, int32_t destPointer, int32_t destMaxSize, int32_t ident);
+//
 // extern void print(void *context, int32_t pointer, int32_t size, int32_t ident);
+// extern void print_swift(void *context, int32_t pointer, int32_t size, int32_t ident, int32_t swiftself, int32_t swifterr);
 import "C"
 
 import (
@@ -130,8 +134,10 @@ func (w *wasmEnvironment) addInstance() error {
 	}
 
 	imports.AppendFunction("return_result", return_result, C.return_result)
+	imports.AppendFunction("return_result_swift", return_result_swift, C.return_result_swift)
 	imports.AppendFunction("fetch", fetch, C.fetch)
 	imports.AppendFunction("print", print, C.print)
+	imports.AppendFunction("print_swift", print_swift, C.print_swift)
 
 	inst, err := wasmer.NewInstanceWithImports(w.raw, imports)
 	if err != nil {
@@ -223,13 +229,12 @@ func randomIdentifier() (int32, error) {
 
 //export return_result
 func return_result(context unsafe.Pointer, pointer int32, size int32, identifier int32) {
-	// TODO: make it impossible for a module to call out to another instance (obfucate the indices?)
 	envLock.RLock()
 	defer envLock.RUnlock()
 
 	inst, err := instanceForIdentifier(identifier)
 	if err != nil {
-		fmt.Println(errors.Wrap(err, "[hivew] alert: invalid identifier used, potential malicious activity"))
+		fmt.Println(errors.Wrap(err, "[hive-wasm] alert: invalid identifier used, potential malicious activity"))
 		return
 	}
 
@@ -238,13 +243,18 @@ func return_result(context unsafe.Pointer, pointer int32, size int32, identifier
 	inst.resultChan <- result
 }
 
+//export return_result_swift
+func return_result_swift(context unsafe.Pointer, pointer int32, size int32, identifier int32, swiftself int32, swifterr int32) {
+	return_result(context, pointer, size, identifier)
+}
+
 //export fetch
 func fetch(context unsafe.Pointer, urlPointer int32, urlSize int32, destPointer int32, destMaxSize int32, identifier int32) int32 {
 	// fetch makes a network request on bahalf of the wasm runner.
 	// fetch writes the http response body into memory starting at returnBodyPointer, and the return value is a pointer to that memory
 	inst, err := instanceForIdentifier(identifier)
 	if err != nil {
-		fmt.Println(errors.Wrap(err, "[hivew] alert: invalid identifier used, potential malicious activity"))
+		fmt.Println(errors.Wrap(err, "[hive-wasm] alert: invalid identifier used, potential malicious activity"))
 		return -1
 	}
 
@@ -286,7 +296,7 @@ func fetch(context unsafe.Pointer, urlPointer int32, urlSize int32, destPointer 
 func print(context unsafe.Pointer, pointer int32, size int32, identifier int32) {
 	inst, err := instanceForIdentifier(identifier)
 	if err != nil {
-		fmt.Println(errors.Wrap(err, "[hivew] alert: invalid identifier used, potential malicious activity"))
+		fmt.Println(errors.Wrap(err, "[hive-wasm] alert: invalid identifier used, potential malicious activity"))
 		return
 	}
 
@@ -294,4 +304,9 @@ func print(context unsafe.Pointer, pointer int32, size int32, identifier int32) 
 	msg := fmt.Sprintf("[%d]: %s", identifier, string(msgBytes))
 
 	fmt.Println(msg)
+}
+
+//export print_swift
+func print_swift(context unsafe.Pointer, pointer int32, size int32, identifier int32, x int32, y int32) {
+	print(context, pointer, size, identifier)
 }

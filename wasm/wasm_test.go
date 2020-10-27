@@ -28,7 +28,7 @@ func TestWasmRunnerRawWithFetch(t *testing.T) {
 func TestWasmRunner(t *testing.T) {
 	h := hive.New()
 
-	// test a WASM module that was compiled with the hivew CLI
+	// test a WASM module that was compiled with the subo CLI
 	doWasm := h.Handle("wasm", NewRunner("./testdata/helloworld-rs.wasm"))
 
 	res, err := doWasm([]byte("what is up")).Then()
@@ -42,10 +42,27 @@ func TestWasmRunner(t *testing.T) {
 	}
 }
 
+func TestSwiftRaw(t *testing.T) {
+	h := hive.New()
+
+	// test a WASM module that was compiled directly using swiftc
+	doWasm := h.Handle("wasm", NewRunner("./testdata/swiftc_runnable.wasm"))
+
+	res, err := doWasm("what is up").Then()
+	if err != nil {
+		t.Error(errors.Wrap(err, "failed to Then"))
+		return
+	}
+
+	if string(res.([]byte)) != "hello what is up" {
+		t.Error(fmt.Errorf("expected 'hello what is up', got %q", string(res.([]byte))))
+	}
+}
+
 func TestWasmRunnerDataConversion(t *testing.T) {
 	h := hive.New()
 
-	// test a WASM module that was compiled with the hivew CLI
+	// test a WASM module that was compiled with the subo CLI
 	doWasm := h.Handle("wasm", NewRunner("./testdata/helloworld-rs.wasm"))
 
 	res, err := doWasm("my name is joe").Then()
