@@ -11,9 +11,10 @@ import (
 // Directive describes a set of functions and a set of handlers
 // that take an input, and compose a set of functions to handle it
 type Directive struct {
-	Version   string
-	Functions []Function
-	Handlers  []Handler
+	Identifier string
+	Version    string
+	Functions  []Function
+	Handlers   []Handler
 }
 
 // Marshal outputs the YAML bytes of the Directive
@@ -73,6 +74,10 @@ func (p *problems) render() error {
 // Validate validates a directive
 func (d *Directive) Validate() error {
 	problems := &problems{}
+
+	if d.Identifier == "" {
+		problems.add(errors.New("identifier is missing"))
+	}
 
 	if !semver.IsValid(d.Version) {
 		problems.add(errors.New("version is not a valid semver"))

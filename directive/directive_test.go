@@ -6,7 +6,8 @@ import (
 
 func TestYAMLMarshalUnmarshal(t *testing.T) {
 	dir := Directive{
-		Version: "v0.1.1",
+		Identifier: "dev.suborbital.appname",
+		Version:    "v0.1.1",
 		Functions: []Function{
 			{
 				Name:      "getUser",
