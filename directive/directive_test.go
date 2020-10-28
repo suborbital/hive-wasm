@@ -1,13 +1,12 @@
 package directive
 
 import (
-	"fmt"
 	"testing"
 )
 
 func TestYAMLMarshalUnmarshal(t *testing.T) {
 	dir := Directive{
-		Version: "0.1.1",
+		Version: "v0.1.1",
 		Functions: []Function{
 			{
 				Name:      "getUser",
@@ -25,14 +24,19 @@ func TestYAMLMarshalUnmarshal(t *testing.T) {
 		Handlers: []Handler{
 			{
 				Input: Input{
-					Type: "request",
+					Type:     "request",
+					Resource: "/api/v1/user",
 				},
 				Steps: []Executable{
-					Group{Group: []Single{
-						{FQFN: "db#getUser@0.1.1"},
-						{FQFN: "db#getUserDetails@0.1.1"},
-					}},
-					Single{FQFN: "db#returnUser@0.1.1"},
+					{
+						Group: []string{
+							"db#getUser@0.1.1",
+							"db#getUserDetails@0.1.1",
+						},
+					},
+					{
+						Fn: "db#returnUser@0.1.1",
+					},
 				},
 			},
 		},
@@ -44,5 +48,23 @@ func TestYAMLMarshalUnmarshal(t *testing.T) {
 		return
 	}
 
-	fmt.Println(string(yamlBytes))
+	dir2 := Directive{}
+	if err := dir2.Unmarshal(yamlBytes); err != nil {
+		t.Error(err)
+		return
+	}
+
+	if err := dir2.Validate(); err != nil {
+		t.Error(err)
+	}
+
+	if len(dir2.Handlers[0].Steps) != 2 {
+		t.Error("wrong number of steps")
+		return
+	}
+
+	if len(dir2.Functions) != 3 {
+		t.Error("wrong number of steps")
+		return
+	}
 }

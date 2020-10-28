@@ -11,6 +11,7 @@ require (
 	github.com/suborbital/vektor v0.2.2 // indirect
 	github.com/wasmerio/wasmer-go v0.3.2-0.20200903143934-299b1d478cde
 	golang.org/x/crypto v0.0.0-20201016220609-9e8e0b390897 // indirect
+	golang.org/x/mod v0.3.0
 	golang.org/x/net v0.0.0-20201026091529-146b70c837a4 // indirect
 	golang.org/x/sync v0.0.0-20201020160332-67f06af15bc9 // indirect
 	gopkg.in/check.v1 v1.0.0-20180628173108-788fd7840127 // indirect

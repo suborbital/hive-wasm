@@ -1,6 +1,12 @@
 package directive
 
-import "gopkg.in/yaml.v2"
+import (
+	"errors"
+	"fmt"
+
+	"golang.org/x/mod/semver"
+	"gopkg.in/yaml.v2"
+)
 
 // Directive describes a set of functions and a set of handlers
 // that take an input, and compose a set of functions to handle it
@@ -34,27 +40,78 @@ type Handler struct {
 
 // Input represents an input source
 type Input struct {
-	Type string
-	// Some kind of metadata here?
+	Type     string
+	Resource string
 }
 
 // Executable represents an executable step in a handler
-type Executable interface {
-	Type() string
+type Executable struct {
+	Group []string `yaml:"group,omitempty"`
+	Fn    string   `yaml:"fn,omitempty"`
 }
 
-// Group represents a group of functions
-type Group struct {
-	Group []Single
+type problems []error
+
+func (p *problems) add(err error) {
+	*p = append(*p, err)
 }
 
-// Type returns the executable type
-func (g Group) Type() string { return "group" }
+func (p *problems) render() error {
+	if len(*p) == 0 {
+		return nil
+	}
 
-// Single represents a singe function
-type Single struct {
-	FQFN string // FQFN stands for "fully qualified function name" in the style namespace#functionname@version.number.semver
+	text := fmt.Sprintf("found %d problems:", len(*p))
+
+	for _, err := range *p {
+		text += fmt.Sprintf("\n\t%s", err.Error())
+	}
+
+	return errors.New(text)
 }
 
-// Type returns the executable type
-func (s Single) Type() string { return "single" }
+// Validate validates a directive
+func (d *Directive) Validate() error {
+	problems := &problems{}
+
+	if !semver.IsValid(d.Version) {
+		problems.add(errors.New("version is not a valid semver"))
+	}
+
+	if len(d.Functions) < 1 {
+		problems.add(errors.New("no functions listed"))
+	}
+
+	for i, f := range d.Functions {
+		if f.Name == "" {
+			problems.add(fmt.Errorf("function at position %d missing name", i))
+		}
+		if f.NameSpace == "" {
+			problems.add(fmt.Errorf("function at position %d missing namespace", i))
+		}
+	}
+
+	if len(d.Handlers) > 0 {
+		for i, h := range d.Handlers {
+			if h.Input.Type == "" {
+				problems.add(fmt.Errorf("handler at position %d missing type", i))
+			}
+			if h.Input.Resource == "" {
+				problems.add(fmt.Errorf("handler at position %d missing resource", i))
+			}
+
+			if len(h.Steps) == 0 {
+				problems.add(fmt.Errorf("handler at position %d missing steps", i))
+				continue
+			}
+
+			for j, s := range h.Steps {
+				if s.Fn == "" && (s.Group == nil || len(s.Group) == 0) {
+					problems.add(fmt.Errorf("step at position %d for handler handler at position %d has neither Fn or Group", j, i))
+				}
+			}
+		}
+	}
+
+	return problems.render()
+}
