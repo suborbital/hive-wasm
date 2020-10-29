@@ -26,6 +26,7 @@ func TestYAMLMarshalUnmarshal(t *testing.T) {
 			{
 				Input: Input{
 					Type:     "request",
+					Method:   "GET",
 					Resource: "/api/v1/user",
 				},
 				Steps: []Executable{

@@ -6,7 +6,6 @@ import (
 	"os"
 	"path/filepath"
 
-	"github.com/google/uuid"
 	"github.com/suborbital/hive-wasm/directive"
 	"github.com/suborbital/hive-wasm/wasm"
 )
@@ -25,8 +24,8 @@ func main() {
 	}
 
 	directive := &directive.Directive{
-		Identifier: uuid.New().String(),
-		Version:    "v0.0.1",
+		Identifier: "dev.suborbital.appname",
+		Version:    "v0.1.1",
 		Functions: []directive.Function{
 			{
 				Name:      "helloworld-rs",
@@ -37,8 +36,31 @@ func main() {
 				NameSpace: "default",
 			},
 			{
-				Name:      "helloworld-swift",
+				Name:      "swiftc_runnable",
 				NameSpace: "default",
+			},
+		},
+		Handlers: []directive.Handler{
+			{
+				Input: directive.Input{
+					Type:     "request",
+					Method:   "GET",
+					Resource: "/api/v1/user",
+				},
+				Steps: []directive.Executable{
+					// {
+					// 	Group: []string{
+					// 		"db#getUser@0.1.1",
+					// 		"db#getUserDetails@0.1.1",
+					// 	},
+					// },
+					{
+						Fn: "helloworld-rs",
+					},
+					{
+						Fn: "hivew_rs_builder",
+					},
+				},
 			},
 		},
 	}
