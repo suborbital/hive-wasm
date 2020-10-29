@@ -14,8 +14,8 @@ import (
 	"github.com/suborbital/hive/hive"
 )
 
-// HandleBundle loads a .wasm.zip file into the hive instance
-func HandleBundle(h *hive.Hive, path string) error {
+// HandleBundleAtPath loads a .wasm.zip file into the hive instance
+func HandleBundleAtPath(h *hive.Hive, path string) error {
 	if !strings.HasSuffix(path, ".wasm.zip") {
 		return fmt.Errorf("cannot load bundle %s, does not have .wasm.zip extension", filepath.Base(path))
 	}
@@ -25,6 +25,11 @@ func HandleBundle(h *hive.Hive, path string) error {
 		return errors.Wrap(err, "failed to ReadBundle")
 	}
 
+	return HandleBundle(h, bundle)
+}
+
+// HandleBundle loads a .wasm.zip file into the hive instance
+func HandleBundle(h *hive.Hive, bundle *Bundle) error {
 	for i, r := range bundle.Runnables {
 		runner := newRunnerWithEnvironment(bundle.Runnables[i])
 

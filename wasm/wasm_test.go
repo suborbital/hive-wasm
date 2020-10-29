@@ -93,8 +93,8 @@ func TestWasmRunnerGroup(t *testing.T) {
 func TestWasmBundle(t *testing.T) {
 	h := hive.New()
 
-	if err := HandleBundle(h, "./testdata/runnables.wasm.zip"); err != nil {
-		t.Error(errors.Wrap(err, "failed to HandleBundle"))
+	if err := HandleBundleAtPath(h, "./testdata/runnables.wasm.zip"); err != nil {
+		t.Error(errors.Wrap(err, "failed to AtHandleBundleAtPath"))
 		return
 	}
 
