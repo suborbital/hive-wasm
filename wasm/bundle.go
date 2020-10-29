@@ -10,6 +10,7 @@ import (
 	"strings"
 
 	"github.com/pkg/errors"
+	"github.com/suborbital/hive-wasm/directive"
 	"github.com/suborbital/hive/hive"
 )
 
@@ -37,19 +38,27 @@ func HandleBundle(h *hive.Hive, path string) error {
 // based loosely on https://golang.org/src/archive/zip/example_test.go
 
 // WriteBundle writes a runnable bundle
-func WriteBundle(files []os.File, targetPath string) error {
+func WriteBundle(directive *directive.Directive, files []os.File, targetPath string) error {
+	if directive == nil {
+		return errors.New("directive must be provided")
+	}
+
 	// Create a buffer to write our archive to.
 	buf := new(bytes.Buffer)
 
 	// Create a new zip archive.
 	w := zip.NewWriter(buf)
 
-	// Add some files to the archive.
+	// Add Directive to archive.
+	if err := writeDirective(w, directive); err != nil {
+		return errors.Wrap(err, "failed to writeDirective")
+	}
 
+	// Add some files to the archive.
 	for _, file := range files {
-		f, err := w.Create(filepath.Base(file.Name()))
-		if err != nil {
-			return errors.Wrapf(err, "failed to add %s to bundle", file.Name())
+		if file.Name() == "Directive.yaml" || file.Name() == "Directive.yml" {
+			// only allow the canonical directive that's passed in
+			continue
 		}
 
 		contents, err := ioutil.ReadAll(&file)
@@ -57,11 +66,9 @@ func WriteBundle(files []os.File, targetPath string) error {
 			return errors.Wrapf(err, "failed to read file %s", file.Name())
 		}
 
-		_, err = f.Write(contents)
-		if err != nil {
-			return errors.Wrapf(err, "failed to write %s into bundle", file.Name())
+		if err := writeFile(w, filepath.Base(file.Name()), contents); err != nil {
+			return errors.Wrap(err, "failed to writeFile into bundle")
 		}
-
 	}
 
 	if err := w.Close(); err != nil {
@@ -75,8 +82,36 @@ func WriteBundle(files []os.File, targetPath string) error {
 	return nil
 }
 
+func writeDirective(w *zip.Writer, directive *directive.Directive) error {
+	directiveBytes, err := directive.Marshal()
+	if err != nil {
+		return errors.Wrap(err, "failed to Marshal Directive")
+	}
+
+	if err := writeFile(w, "Directive.yaml", directiveBytes); err != nil {
+		return errors.Wrap(err, "failed to writeFile for Directive")
+	}
+
+	return nil
+}
+
+func writeFile(w *zip.Writer, name string, contents []byte) error {
+	f, err := w.Create(name)
+	if err != nil {
+		return errors.Wrap(err, "failed to add file to bundle")
+	}
+
+	_, err = f.Write(contents)
+	if err != nil {
+		return errors.Wrap(err, "failed to write file into bundle")
+	}
+
+	return nil
+}
+
 // Bundle represents a Runnable bundle
 type Bundle struct {
+	Directive *directive.Directive
 	Runnables []*wasmEnvironment
 }
 
@@ -91,11 +126,23 @@ func ReadBundle(path string) (*Bundle, error) {
 
 	defer r.Close()
 
-	bundle := &Bundle{make([]*wasmEnvironment, len(r.File))}
+	bundle := &Bundle{
+		Runnables: []*wasmEnvironment{},
+	}
 
 	// Iterate through the files in the archive,
 
-	for i, f := range r.File {
+	for _, f := range r.File {
+		if f.Name == "Directive.yaml" {
+			directive, err := readDirective(f)
+			if err != nil {
+				return nil, errors.Wrap(err, "failed to readDirective from bundle")
+			}
+
+			bundle.Directive = directive
+			continue
+		}
+
 		env := newEnvironment(f.Name, "")
 
 		rc, err := f.Open()
@@ -103,17 +150,40 @@ func ReadBundle(path string) (*Bundle, error) {
 			return nil, errors.Wrapf(err, "failed to open %s from bundle", f.Name)
 		}
 
+		defer rc.Close()
+
 		wasmBytes, err := ioutil.ReadAll(rc)
 		if err != nil {
 			return nil, errors.Wrapf(err, "failed to read %s from bundle", f.Name)
 		}
 
-		rc.Close()
-
 		env.setRaw(wasmBytes)
 
-		bundle.Runnables[i] = env
+		bundle.Runnables = append(bundle.Runnables, env)
+	}
+
+	if bundle.Directive == nil {
+		return nil, errors.New("bundle did not contain directive")
 	}
 
 	return bundle, nil
+}
+
+func readDirective(f *zip.File) (*directive.Directive, error) {
+	file, err := f.Open()
+	if err != nil {
+		return nil, errors.Wrapf(err, "failed to open %s from bundle", f.Name)
+	}
+
+	directiveBytes, err := ioutil.ReadAll(file)
+	if err != nil {
+		return nil, errors.Wrapf(err, "failed to read %s from bundle", f.Name)
+	}
+
+	d := &directive.Directive{}
+	if err := d.Unmarshal(directiveBytes); err != nil {
+		return nil, errors.Wrap(err, "failed to Unmarshal Directive")
+	}
+
+	return d, nil
 }
