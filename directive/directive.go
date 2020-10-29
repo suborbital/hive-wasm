@@ -11,10 +11,10 @@ import (
 // Directive describes a set of functions and a set of handlers
 // that take an input, and compose a set of functions to handle it
 type Directive struct {
-	Identifier string
-	Version    string
-	Functions  []Function
-	Handlers   []Handler
+	Identifier string     `yaml:"identifier"`
+	Version    string     `yaml:"version"`
+	Functions  []Function `yaml:"functions"`
+	Handlers   []Handler  `yaml:"handlers,omitempty"`
 }
 
 // Marshal outputs the YAML bytes of the Directive
