@@ -43,7 +43,7 @@ func main() {
 		Handlers: []directive.Handler{
 			{
 				Input: directive.Input{
-					Type:     "request",
+					Type:     directive.InputTypeRequest,
 					Method:   "GET",
 					Resource: "/api/v1/user",
 				},
