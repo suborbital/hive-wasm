@@ -55,6 +55,9 @@ func main() {
 					// 	},
 					// },
 					{
+						Fn: "swiftc_runnable",
+					},
+					{
 						Fn: "helloworld-rs",
 					},
 					{
