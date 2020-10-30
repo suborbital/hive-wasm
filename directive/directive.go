@@ -8,6 +8,11 @@ import (
 	"gopkg.in/yaml.v2"
 )
 
+// InputTypeRequest and others represent consts for Directives
+const (
+	InputTypeRequest = "request"
+)
+
 // Directive describes a set of functions and a set of handlers
 // that take an input, and compose a set of functions to handle it
 type Directive struct {
@@ -42,6 +47,7 @@ type Handler struct {
 // Input represents an input source
 type Input struct {
 	Type     string
+	Method   string
 	Resource string
 }
 
