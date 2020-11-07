@@ -48,12 +48,12 @@ func main() {
 					Resource: "/api/v1/user",
 				},
 				Steps: []directive.Executable{
-					// {
-					// 	Group: []string{
-					// 		"db#getUser@0.1.1",
-					// 		"db#getUserDetails@0.1.1",
-					// 	},
-					// },
+					{
+						Group: []string{
+							"db#getUser@0.1.1",
+							"db#getUserDetails@0.1.1",
+						},
+					},
 					{
 						Fn: "swiftc_runnable",
 					},
