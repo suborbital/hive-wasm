@@ -2,3 +2,4 @@
 */*.wasm
 
 runnables.wasm.zip
+.DS_Store
