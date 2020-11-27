@@ -36,7 +36,7 @@ var envLock = sync.RWMutex{}
 // the instance mapper maps a random int32 to a wasm instance to prevent malicious access to other instances via the FFI
 var instanceMapper = sync.Map{}
 
-// wasmEnvironment is an environmenr in which Wzsm instances run
+// wasmEnvironment is an environmenr in which Wasm instances run
 type wasmEnvironment struct {
 	Name      string
 	UUID      string
@@ -63,7 +63,7 @@ type instanceReference struct {
 }
 
 // newEnvironment creates a new environment and adds it to the shared environments array
-// such that Wzsm instances can return data to the correct place
+// such that Wasm instances can return data to the correct place
 func newEnvironment(name string, filepath string) *wasmEnvironment {
 	envLock.Lock()
 	defer envLock.Unlock()
@@ -114,7 +114,7 @@ func (w *wasmEnvironment) useInstance(instFunc func(*wasmInstance, int32)) error
 	return nil
 }
 
-// addInstance adds a new Wzsm instance to the environment's pool
+// addInstance adds a new Wasm instance to the environment's pool
 func (w *wasmEnvironment) addInstance() error {
 	w.lock.Lock()
 	defer w.lock.Unlock()
@@ -163,7 +163,7 @@ func (w *wasmEnvironment) addInstance() error {
 	return nil
 }
 
-// setRaw sets the raw bytes of a Wzsm module to be used rather than a filepath
+// setRaw sets the raw bytes of a Wasm module to be used rather than a filepath
 func (w *wasmEnvironment) setRaw(raw []byte) {
 	w.raw = raw
 }
@@ -232,7 +232,7 @@ func randomIdentifier() (int32, error) {
 }
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
-// below is the "hivew API" which grants capabilites to Wzsm runnables by routing things like network requests through the host (Go) code //
+// below is the "hivew API" which grants capabilites to Wasm runnables by routing things like network requests through the host (Go) code //
 ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
 //export return_result
