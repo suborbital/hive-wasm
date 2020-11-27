@@ -1,0 +1,10 @@
+version: v0.0.1
+identifier: com.suborbital.test
+
+functions:
+  - name: example
+    namespace: default
+  - name: fetch
+    namespace: default
+  - name: log_example
+    namespace: default

@@ -5,10 +5,10 @@ package wasm
 // extern void return_result(void *context, int32_t pointer, int32_t size, int32_t ident);
 // extern void return_result_swift(void *context, int32_t pointer, int32_t size, int32_t ident, int32_t swiftself, int32_t swifterr);
 //
-// extern int32_t fetch(void *context, int32_t urlPointer, int32_t urlSize, int32_t destPointer, int32_t destMaxSize, int32_t ident);
+// extern int32_t fetch_url(void *context, int32_t urlPointer, int32_t urlSize, int32_t destPointer, int32_t destMaxSize, int32_t ident);
 //
-// extern void print(void *context, int32_t pointer, int32_t size, int32_t ident);
-// extern void print_swift(void *context, int32_t pointer, int32_t size, int32_t ident, int32_t swiftself, int32_t swifterr);
+// extern void log_msg(void *context, int32_t pointer, int32_t size, int32_t level, int32_t ident);
+// extern void log_msg_swift(void *context, int32_t pointer, int32_t size, int32_t level, int32_t ident, int32_t swiftself, int32_t swifterr);
 import "C"
 
 import (
@@ -36,7 +36,7 @@ var envLock = sync.RWMutex{}
 // the instance mapper maps a random int32 to a wasm instance to prevent malicious access to other instances via the FFI
 var instanceMapper = sync.Map{}
 
-// wasmEnvironment is an wasmEnvironment in which WASM instances run
+// wasmEnvironment is an environmenr in which Wzsm instances run
 type wasmEnvironment struct {
 	Name      string
 	UUID      string
@@ -63,7 +63,7 @@ type instanceReference struct {
 }
 
 // newEnvironment creates a new environment and adds it to the shared environments array
-// such that WASM instances can return data to the correct place
+// such that Wzsm instances can return data to the correct place
 func newEnvironment(name string, filepath string) *wasmEnvironment {
 	envLock.Lock()
 	defer envLock.Unlock()
@@ -114,7 +114,7 @@ func (w *wasmEnvironment) useInstance(instFunc func(*wasmInstance, int32)) error
 	return nil
 }
 
-// addInstance adds a new WASM instance to the environment's pool
+// addInstance adds a new Wzsm instance to the environment's pool
 func (w *wasmEnvironment) addInstance() error {
 	w.lock.Lock()
 	defer w.lock.Unlock()
@@ -135,13 +135,21 @@ func (w *wasmEnvironment) addInstance() error {
 
 	imports.AppendFunction("return_result", return_result, C.return_result)
 	imports.AppendFunction("return_result_swift", return_result_swift, C.return_result_swift)
-	imports.AppendFunction("fetch", fetch, C.fetch)
-	imports.AppendFunction("print", print, C.print)
-	imports.AppendFunction("print_swift", print_swift, C.print_swift)
+	imports.AppendFunction("fetch_url", fetch_url, C.fetch_url)
+	imports.AppendFunction("log_msg", log_msg, C.log_msg)
+	imports.AppendFunction("log_msg_swift", log_msg_swift, C.log_msg_swift)
 
 	inst, err := wasmer.NewInstanceWithImports(w.raw, imports)
 	if err != nil {
 		return errors.Wrap(err, "failed to NewInstance")
+	}
+
+	// if the module has exported an init, call it
+	init := inst.Exports["init"]
+	if init != nil {
+		if _, err := init(); err != nil {
+			return errors.Wrap(err, "failed to init instance")
+		}
 	}
 
 	instance := &wasmInstance{
@@ -155,7 +163,7 @@ func (w *wasmEnvironment) addInstance() error {
 	return nil
 }
 
-// setRaw sets the raw bytes of a WASM module to be used rather than a filepath
+// setRaw sets the raw bytes of a Wzsm module to be used rather than a filepath
 func (w *wasmEnvironment) setRaw(raw []byte) {
 	w.raw = raw
 }
@@ -224,7 +232,7 @@ func randomIdentifier() (int32, error) {
 }
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
-// below is the "hivew API" which grants capabilites to WASM runnables by routing things like network requests through the host (Go) code //
+// below is the "hivew API" which grants capabilites to Wzsm runnables by routing things like network requests through the host (Go) code //
 ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
 //export return_result
@@ -248,8 +256,8 @@ func return_result_swift(context unsafe.Pointer, pointer int32, size int32, iden
 	return_result(context, pointer, size, identifier)
 }
 
-//export fetch
-func fetch(context unsafe.Pointer, urlPointer int32, urlSize int32, destPointer int32, destMaxSize int32, identifier int32) int32 {
+//export fetch_url
+func fetch_url(context unsafe.Pointer, urlPointer int32, urlSize int32, destPointer int32, destMaxSize int32, identifier int32) int32 {
 	// fetch makes a network request on bahalf of the wasm runner.
 	// fetch writes the http response body into memory starting at returnBodyPointer, and the return value is a pointer to that memory
 	inst, err := instanceForIdentifier(identifier)
@@ -292,8 +300,8 @@ func fetch(context unsafe.Pointer, urlPointer int32, urlSize int32, destPointer 
 	return int32(len(respBytes))
 }
 
-//export print
-func print(context unsafe.Pointer, pointer int32, size int32, identifier int32) {
+//export log_msg
+func log_msg(context unsafe.Pointer, pointer int32, size int32, level int32, identifier int32) {
 	inst, err := instanceForIdentifier(identifier)
 	if err != nil {
 		fmt.Println(errors.Wrap(err, "[hive-wasm] alert: invalid identifier used, potential malicious activity"))
@@ -306,7 +314,7 @@ func print(context unsafe.Pointer, pointer int32, size int32, identifier int32) 
 	fmt.Println(msg)
 }
 
-//export print_swift
-func print_swift(context unsafe.Pointer, pointer int32, size int32, identifier int32, x int32, y int32) {
-	print(context, pointer, size, identifier)
+//export log_msg_swift
+func log_msg_swift(context unsafe.Pointer, pointer int32, size int32, level int32, identifier int32, swiftself int32, swifterr int32) {
+	log_msg(context, pointer, size, level, identifier)
 }

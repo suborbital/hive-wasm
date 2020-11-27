@@ -12,7 +12,7 @@ func TestWasmRunnerRawWithFetch(t *testing.T) {
 	h := hive.New()
 
 	// test a WASM module that was directly compiled from the hivew-rs-builder repo
-	doWasm := h.Handle("wasm", NewRunner("./testdata/hivew_rs_builder.wasm"))
+	doWasm := h.Handle("wasm", NewRunner("./testdata/fetch.wasm"))
 
 	res, err := doWasm("https://1password.com").Then()
 	if err != nil {
@@ -28,8 +28,7 @@ func TestWasmRunnerRawWithFetch(t *testing.T) {
 func TestWasmRunner(t *testing.T) {
 	h := hive.New()
 
-	// test a WASM module that was compiled with the subo CLI
-	doWasm := h.Handle("wasm", NewRunner("./testdata/helloworld-rs.wasm"))
+	doWasm := h.Handle("wasm", NewRunner("./testdata/example.wasm"))
 
 	res, err := doWasm([]byte("what is up")).Then()
 	if err != nil {
@@ -42,28 +41,44 @@ func TestWasmRunner(t *testing.T) {
 	}
 }
 
-func TestSwiftRaw(t *testing.T) {
+func TestWasmRunnerWithLog(t *testing.T) {
 	h := hive.New()
 
-	// test a WASM module that was compiled directly using swiftc
-	doWasm := h.Handle("wasm", NewRunner("./testdata/swiftc_runnable.wasm"))
+	doWasm := h.Handle("wasm", NewRunner("./testdata/log_example.wasm"))
 
-	res, err := doWasm("what is up").Then()
+	res, err := doWasm([]byte("what is up")).Then()
 	if err != nil {
 		t.Error(errors.Wrap(err, "failed to Then"))
 		return
 	}
 
 	if string(res.([]byte)) != "hello what is up" {
-		t.Error(fmt.Errorf("expected 'hello what is up', got %q", string(res.([]byte))))
+		t.Error(fmt.Errorf("expected 'hello, what is up', got %s", string(res.([]byte))))
 	}
 }
+
+// Waiting to include this until the Swift builder is more mature
+// func TestSwiftRaw(t *testing.T) {
+// 	h := hive.New()
+
+// 	// test a WASM module that was compiled directly using swiftc
+// 	doWasm := h.Handle("wasm", NewRunner("./testdata/swiftc_runnable.wasm"))
+
+// 	res, err := doWasm("what is up").Then()
+// 	if err != nil {
+// 		t.Error(errors.Wrap(err, "failed to Then"))
+// 		return
+// 	}
+
+// 	if string(res.([]byte)) != "hello what is up" {
+// 		t.Error(fmt.Errorf("expected 'hello what is up', got %q", string(res.([]byte))))
+// 	}
+// }
 
 func TestWasmRunnerDataConversion(t *testing.T) {
 	h := hive.New()
 
-	// test a WASM module that was compiled with the subo CLI
-	doWasm := h.Handle("wasm", NewRunner("./testdata/helloworld-rs.wasm"))
+	doWasm := h.Handle("wasm", NewRunner("./testdata/example.wasm"))
 
 	res, err := doWasm("my name is joe").Then()
 	if err != nil {
@@ -78,7 +93,7 @@ func TestWasmRunnerDataConversion(t *testing.T) {
 func TestWasmRunnerGroup(t *testing.T) {
 	h := hive.New()
 
-	doWasm := h.Handle("wasm", NewRunner("./testdata/helloworld-rs.wasm"))
+	doWasm := h.Handle("wasm", NewRunner("./testdata/example.wasm"))
 
 	grp := hive.NewGroup()
 	for i := 0; i < 50000; i++ {
@@ -98,7 +113,7 @@ func TestWasmBundle(t *testing.T) {
 		return
 	}
 
-	res, err := h.Do(hive.NewJob("helloworld-rs", []byte("wasmWorker!"))).Then()
+	res, err := h.Do(hive.NewJob("example", []byte("wasmWorker!"))).Then()
 	if err != nil {
 		t.Error(errors.Wrap(err, "Then returned error"))
 		return
@@ -314,7 +329,7 @@ help@lipsum.com
 func TestWasmLargeData(t *testing.T) {
 	h := hive.New()
 
-	doWasm := h.Handle("wasm", NewRunner("./testdata/helloworld-rs.wasm"))
+	doWasm := h.Handle("wasm", NewRunner("./testdata/example.wasm"))
 
 	r := doWasm([]byte(largeInput))
 
@@ -335,7 +350,7 @@ func TestWasmLargeData(t *testing.T) {
 func TestWasmLargeDataGroup(t *testing.T) {
 	h := hive.New()
 
-	doWasm := h.Handle("wasm", NewRunner("./testdata/helloworld-rs.wasm"))
+	doWasm := h.Handle("wasm", NewRunner("./testdata/example.wasm"))
 
 	grp := hive.NewGroup()
 	for i := 0; i < 50000; i++ {
@@ -343,14 +358,14 @@ func TestWasmLargeDataGroup(t *testing.T) {
 	}
 
 	if err := grp.Wait(); err != nil {
-		t.Error(err)
+		t.Error("group returned an error")
 	}
 }
 
 func TestWasmLargeDataGroupWithPool(t *testing.T) {
 	h := hive.New()
 
-	doWasm := h.Handle("wasm", NewRunner("./testdata/helloworld-rs.wasm"), hive.PoolSize(20))
+	doWasm := h.Handle("wasm", NewRunner("./testdata/example.wasm"), hive.PoolSize(20))
 
 	grp := hive.NewGroup()
 	for i := 0; i < 50000; i++ {
@@ -358,6 +373,6 @@ func TestWasmLargeDataGroupWithPool(t *testing.T) {
 	}
 
 	if err := grp.Wait(); err != nil {
-		t.Error(err)
+		t.Error("group returned an error")
 	}
 }
