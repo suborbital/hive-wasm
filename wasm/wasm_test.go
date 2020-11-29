@@ -60,7 +60,6 @@ func TestWasmRunnerWithLog(t *testing.T) {
 func TestSwiftRaw(t *testing.T) {
 	h := hive.New()
 
-	// test a WASM module that was compiled directly using swiftc
 	doWasm := h.Handle("wasm", NewRunner("./testdata/swift-example.wasm"))
 
 	res, err := doWasm("what is up").Then()
