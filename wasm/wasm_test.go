@@ -57,23 +57,22 @@ func TestWasmRunnerWithLog(t *testing.T) {
 	}
 }
 
-// Waiting to include this until the Swift builder is more mature
-// func TestSwiftRaw(t *testing.T) {
-// 	h := hive.New()
+func TestSwiftRaw(t *testing.T) {
+	h := hive.New()
 
-// 	// test a WASM module that was compiled directly using swiftc
-// 	doWasm := h.Handle("wasm", NewRunner("./testdata/swiftc_runnable.wasm"))
+	// test a WASM module that was compiled directly using swiftc
+	doWasm := h.Handle("wasm", NewRunner("./testdata/swift-example.wasm"))
 
-// 	res, err := doWasm("what is up").Then()
-// 	if err != nil {
-// 		t.Error(errors.Wrap(err, "failed to Then"))
-// 		return
-// 	}
+	res, err := doWasm("what is up").Then()
+	if err != nil {
+		t.Error(errors.Wrap(err, "failed to Then"))
+		return
+	}
 
-// 	if string(res.([]byte)) != "hello what is up" {
-// 		t.Error(fmt.Errorf("expected 'hello what is up', got %q", string(res.([]byte))))
-// 	}
-// }
+	if string(res.([]byte)) != "hello what is up" {
+		t.Error(fmt.Errorf("expected 'hello what is up', got %q", string(res.([]byte))))
+	}
+}
 
 func TestWasmRunnerDataConversion(t *testing.T) {
 	h := hive.New()
