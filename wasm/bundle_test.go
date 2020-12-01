@@ -27,12 +27,12 @@ func TestReadBundle(t *testing.T) {
 
 	hasDefault := false
 	for _, r := range bundle.Runnables {
-		if r.Name == "helloworld-rs.wasm" {
+		if r.Name == "example.wasm" {
 			hasDefault = true
 		}
 	}
 
 	if !hasDefault {
-		t.Error("default helloworld-rs.wasm not found in bundle")
+		t.Error("default example.wasm not found in bundle")
 	}
 }
