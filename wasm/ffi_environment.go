@@ -25,6 +25,7 @@ import (
 
 	"github.com/google/uuid"
 	"github.com/pkg/errors"
+	"github.com/suborbital/hive-wasm/bundle"
 	"github.com/wasmerio/wasmer-go/wasmer"
 )
 
@@ -54,10 +55,8 @@ var instanceMapper = sync.Map{}
 
 // wasmEnvironment is an environmenr in which Wasm instances run
 type wasmEnvironment struct {
-	Name      string
 	UUID      string
-	filepath  string
-	raw       []byte
+	ref       *bundle.WasmModuleRef
 	instances []*wasmInstance
 
 	// the index of the last used wasm instance
@@ -80,14 +79,13 @@ type instanceReference struct {
 
 // newEnvironment creates a new environment and adds it to the shared environments array
 // such that Wasm instances can return data to the correct place
-func newEnvironment(name string, filepath string) *wasmEnvironment {
+func newEnvironment(ref *bundle.WasmModuleRef) *wasmEnvironment {
 	envLock.Lock()
 	defer envLock.Unlock()
 
 	e := &wasmEnvironment{
-		Name:      name,
 		UUID:      uuid.New().String(),
-		filepath:  filepath,
+		ref:       ref,
 		instances: []*wasmInstance{},
 		instIndex: 0,
 		lock:      sync.Mutex{},
@@ -135,13 +133,9 @@ func (w *wasmEnvironment) addInstance() error {
 	w.lock.Lock()
 	defer w.lock.Unlock()
 
-	if w.raw == nil || len(w.raw) == 0 {
-		bytes, err := wasmer.ReadBytes(w.filepath)
-		if err != nil {
-			return errors.Wrap(err, "failed to ReadBytes")
-		}
-
-		w.raw = bytes
+	module, err := w.ref.ModuleBytes()
+	if err != nil {
+		return errors.Wrap(err, "failed to ModuleBytes")
 	}
 
 	// mount the WASI interface
@@ -157,7 +151,7 @@ func (w *wasmEnvironment) addInstance() error {
 	imports.AppendFunction("log_msg", log_msg, C.log_msg)
 	imports.AppendFunction("log_msg_swift", log_msg_swift, C.log_msg_swift)
 
-	inst, err := wasmer.NewInstanceWithImports(w.raw, imports)
+	inst, err := wasmer.NewInstanceWithImports(module, imports)
 	if err != nil {
 		return errors.Wrap(err, "failed to NewInstance")
 	}
@@ -179,11 +173,6 @@ func (w *wasmEnvironment) addInstance() error {
 	w.instances = append(w.instances, instance)
 
 	return nil
-}
-
-// setRaw sets the raw bytes of a Wasm module to be used rather than a filepath
-func (w *wasmEnvironment) setRaw(raw []byte) {
-	w.raw = raw
 }
 
 func setupNewIdentifier(envUUID string, instIndex int) (int32, error) {

@@ -1,4 +1,4 @@
-package wasm
+package bundle
 
 import (
 	"os"
@@ -8,15 +8,15 @@ import (
 	"github.com/pkg/errors"
 )
 
-func TestReadBundle(t *testing.T) {
+func TestRead(t *testing.T) {
 	cwd, err := os.Getwd()
 	if err != nil {
 		t.Error(errors.Wrap(err, "failed to get CWD"))
 	}
 
-	bundle, err := ReadBundle(filepath.Join(cwd, "./testdata/runnables.wasm.zip"))
+	bundle, err := Read(filepath.Join(cwd, "../wasm/testdata/runnables.wasm.zip"))
 	if err != nil {
-		t.Error(errors.Wrap(err, "failed to ReadBundle"))
+		t.Error(errors.Wrap(err, "failed to Read"))
 		return
 	}
 

@@ -3,6 +3,7 @@ package wasm
 import (
 	"encoding/json"
 
+	"github.com/suborbital/hive-wasm/bundle"
 	"github.com/suborbital/hive/hive"
 
 	"github.com/pkg/errors"
@@ -15,7 +16,21 @@ type Runner struct {
 
 // NewRunner returns a new *Runner
 func NewRunner(filepath string) *Runner {
-	return newRunnerWithEnvironment(newEnvironment("", filepath))
+	ref := &bundle.WasmModuleRef{
+		Filepath: filepath,
+	}
+
+	return newRunnerWithRef(ref)
+}
+
+func newRunnerWithRef(ref *bundle.WasmModuleRef) *Runner {
+	environment := newEnvironment(ref)
+
+	r := &Runner{
+		env: environment,
+	}
+
+	return r
 }
 
 func newRunnerWithEnvironment(env *wasmEnvironment) *Runner {

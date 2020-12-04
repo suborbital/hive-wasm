@@ -6,8 +6,8 @@ import (
 	"os"
 	"path/filepath"
 
+	"github.com/suborbital/hive-wasm/bundle"
 	"github.com/suborbital/hive-wasm/directive"
-	"github.com/suborbital/hive-wasm/wasm"
 )
 
 func main() {
@@ -66,7 +66,7 @@ func main() {
 		log.Fatal("failed to validate directive", err)
 	}
 
-	if err := wasm.WriteBundle(directive, files, "./runnables.wasm.zip"); err != nil {
+	if err := bundle.Write(directive, files, "./runnables.wasm.zip"); err != nil {
 		log.Fatal("failed to WriteBundle", err)
 	}
 
