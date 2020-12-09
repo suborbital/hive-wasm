@@ -1,0 +1,1 @@
+/Users/cohix-16/Workspaces/suborbital/subo/builders/rust/suborbital/target/package/suborbital-0.0.1/target/wasm32-wasi/debug/suborbital.wasm: /Users/cohix-16/Workspaces/suborbital/subo/builders/rust/suborbital/target/package/suborbital-0.0.1/src/lib.rs
