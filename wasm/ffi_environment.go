@@ -380,17 +380,16 @@ func log_msg(context unsafe.Pointer, pointer int32, size int32, level int32, ide
 	}
 
 	msgBytes := inst.readMemory(pointer, size)
-	msg := fmt.Sprintf("[%d]: %s", identifier, string(msgBytes))
 
 	l := logger.CreateScoped(logScope{Identifier: identifier})
 
 	switch level {
 	case 1:
-		l.ErrorString(msg)
+		l.ErrorString(string(msgBytes))
 	case 2:
-		l.Warn(msg)
+		l.Warn(string(msgBytes))
 	default:
-		l.Info(msg)
+		l.Info(string(msgBytes))
 	}
 }
 
