@@ -1,1 +1,0 @@
-{"rustc":13783575115907918084,"features":"[\"default\"]","target":566170731969822100,"profile":4339006351771724982,"path":2491709573353748327,"deps":[[5642445754295124120,"serde",false,11341212777265184685]],"local":[{"CheckDepInfo":{"dep_info":"wasm32-wasi/release/.fingerprint/toml-ba4975955fbb6721/dep-lib-toml"}}],"rustflags":[],"metadata":15823223228428447826,"config":0}
