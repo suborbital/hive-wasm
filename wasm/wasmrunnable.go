@@ -5,6 +5,7 @@ import (
 
 	"github.com/suborbital/hive-wasm/bundle"
 	"github.com/suborbital/hive/hive"
+	"github.com/suborbital/vektor/vlog"
 
 	"github.com/pkg/errors"
 )
@@ -12,6 +13,11 @@ import (
 //Runner represents a wasm-based runnable
 type Runner struct {
 	env *wasmEnvironment
+}
+
+// UseLogger sets the logger to be used by Wasm Runnables
+func UseLogger(l *vlog.Logger) {
+	logger = l
 }
 
 // NewRunner returns a new *Runner

@@ -1,0 +1,19 @@
+[package]
+name = "suborbital"
+version = "0.2.2"
+authors = ["cohix <connorjhicks@gmail.com>"]
+edition = "2018"
+description = "Suborbital Wasm FFI API"
+license = "Apache-2.0"
+repository = "https://github.com/suborbital/hive-wasm"
+homepage = "https://suborbital.dev"
+
+[lib]
+crate-type = ["cdylib", "rlib"]
+
+[dependencies]
+toml = "0.5.6"
+serde = { version = "1", features = ["derive"] }
+serde_json = { version = "1", default-features = false, features = ["alloc"]}
+simple-error = "0.1.9"
+cargo_toml = "0.6.3"

@@ -26,6 +26,7 @@ import (
 	"github.com/google/uuid"
 	"github.com/pkg/errors"
 	"github.com/suborbital/hive-wasm/bundle"
+	"github.com/suborbital/vektor/vlog"
 	"github.com/wasmerio/wasmer-go/wasmer"
 )
 
@@ -52,6 +53,9 @@ var envLock = sync.RWMutex{}
 
 // the instance mapper maps a random int32 to a wasm instance to prevent malicious access to other instances via the FFI
 var instanceMapper = sync.Map{}
+
+// the logger used by Wasm Runnables
+var logger = vlog.Default()
 
 // wasmEnvironment is an environmenr in which Wasm instances run
 type wasmEnvironment struct {
@@ -363,18 +367,30 @@ func fetch_url(context unsafe.Pointer, urlPointer int32, urlSize int32, destPoin
 	return int32(len(respBytes))
 }
 
+type logScope struct {
+	Identifier int32 `json:"ident"`
+}
+
 //export log_msg
 func log_msg(context unsafe.Pointer, pointer int32, size int32, level int32, identifier int32) {
 	inst, err := instanceForIdentifier(identifier)
 	if err != nil {
-		fmt.Println(errors.Wrap(err, "[hive-wasm] alert: invalid identifier used, potential malicious activity"))
+		logger.Error(errors.Wrap(err, "[hive-wasm] alert: invalid identifier used, potential malicious activity"))
 		return
 	}
 
 	msgBytes := inst.readMemory(pointer, size)
-	msg := fmt.Sprintf("[%d]: %s", identifier, string(msgBytes))
 
-	fmt.Println(msg)
+	l := logger.CreateScoped(logScope{Identifier: identifier})
+
+	switch level {
+	case 1:
+		l.ErrorString(string(msgBytes))
+	case 2:
+		l.Warn(string(msgBytes))
+	default:
+		l.Info(string(msgBytes))
+	}
 }
 
 //export log_msg_swift

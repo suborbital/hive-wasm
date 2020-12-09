@@ -29,7 +29,6 @@ github.com/suborbital/grav v0.0.11 h1:5S63w/Z/2ZsiekIDhg+CQxiVcxLp0vM0UaREOdul3I
 github.com/suborbital/grav v0.0.11/go.mod h1:fN837ibcYZILUd/nKoSaEbo+oTSGRtTbbm/MiwmM3Pw=
 github.com/suborbital/hive v0.1.3 h1:b29wRkR6Vg1LiPF3H3bfJq+N2xY2AQl0H+fkwC+MJtk=
 github.com/suborbital/hive v0.1.3/go.mod h1:CxEZVgJfnwOzUt/67YYnuw5uunb1t5oAoGpCrtIcPiE=
-github.com/suborbital/hive v0.1.4 h1:+ywO+vh/b/VdBDeGp6033zhcN5bQ8cPwVA8duiuWWoA=
 github.com/suborbital/vektor v0.1.1/go.mod h1:tJ4gA2P8NWC4Pdu0TgpSBWZHuZ1Qhp+r5RlsqyIqdyw=
 github.com/suborbital/vektor v0.1.3 h1:rC5ic4FnjmcbizmV/WAQt67QkF6eJ7jHSsuy8IFC2bc=
 github.com/suborbital/vektor v0.1.3/go.mod h1:tJ4gA2P8NWC4Pdu0TgpSBWZHuZ1Qhp+r5RlsqyIqdyw=
