@@ -5,11 +5,14 @@ import PackageDescription
 
 let package = Package(
     name: "suborbital",
+    products: [
+        .library(name: "suborbital", targets: ["suborbital"]),
+    ],
     dependencies: [],
     targets: [
         .target(
             name: "suborbital",
             dependencies: [],
-            path: "api/swift/suborbital/Sources"),
+            path: "api/swift/Sources"),
     ]
 )
