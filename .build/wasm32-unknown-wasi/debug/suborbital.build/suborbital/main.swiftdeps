@@ -1,0 +1,39 @@
+### Swift dependencies file v0 ###
+provides-top-level:
+- "ExampleRunnable"
+- "init"
+provides-nominal:
+- "10suborbital15ExampleRunnableC"
+provides-member:
+- ["10suborbital15ExampleRunnableC", ""]
+depends-top-level:
+- !private "+"
+- "ExampleRunnable"
+- "Runnable"
+- "String"
+- !private "StringLiteralType"
+- "init"
+- !private "log_info"
+- !private "set"
+depends-member:
+- ["10suborbital15ExampleRunnableC", "String"]
+- !private ["10suborbital15ExampleRunnableC", ""]
+- ["10suborbital15ExampleRunnableC", "deinit"]
+- ["10suborbital15ExampleRunnableC", "init"]
+- !private ["10suborbital15ExampleRunnableC", "log_info"]
+- ["10suborbital15ExampleRunnableC", "run"]
+- ["10suborbital8RunnableP", ""]
+- !private ["10suborbital8RunnableP", "init"]
+- !private ["10suborbital8RunnableP", "log_info"]
+- ["10suborbital8RunnableP", "run"]
+- !private ["s34_ExpressibleByBuiltinStringLiteralP", "init"]
+depends-nominal:
+- "10suborbital15ExampleRunnableC"
+- "10suborbital8RunnableP"
+- !private "s34_ExpressibleByBuiltinStringLiteralP"
+depends-dynamic-lookup:
+depends-external:
+- "/Library/Developer/Toolchains/swift-wasm-5.3.1-RELEASE.xctoolchain/usr/lib/swift_static/wasi/wasm32/Swift.swiftmodule"
+- "/Library/Developer/Toolchains/swift-wasm-5.3.1-RELEASE.xctoolchain/usr/lib/swift_static/wasi/wasm32/SwiftOnoneSupport.swiftmodule"
+- "/Library/Developer/Toolchains/swift-wasm-5.3.1-RELEASE.xctoolchain/usr/lib/swift_static/wasi/wasm32/wasi.modulemap"
+interface-hash: "4bcf8f87844061df022a0e8e495b2506"

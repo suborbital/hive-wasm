@@ -1,0 +1,6 @@
+version: "SwiftWasm Swift version 5.3 (swiftlang-5.3.1)"
+options: "eab432337bfc427ab1fa4ebdb49733f2"
+build_time: [1607695726, 545218000]
+inputs:
+  "/Users/cohix-16/Workspaces/suborbital/hive-wasm/api/swift/suborbital/Sources/suborbital/lib.swift": [1607694186, 920972518]
+  "/Users/cohix-16/Workspaces/suborbital/hive-wasm/api/swift/suborbital/Sources/suborbital/main.swift": [1607694186, 921301331]

@@ -1,0 +1,14 @@
+{
+  "builtTestProducts" : [
+
+  ],
+  "copyCommands" : {
+
+  },
+  "swiftTargetMap" : {
+    "C.suborbital-debug.module" : "suborbital"
+  },
+  "testDiscoveryCommands" : {
+
+  }
+}
