@@ -22,15 +22,33 @@ class defaultRunnable: Runnable {
     }
 }
 
-public func set(runnable: Runnable) {
+public func Set(runnable: Runnable) {
     RUNNABLE = runnable
 }
 
-public func log_info(msg: String) {
+public func LogInfo(msg: String) {
     let printCount = Int32(msg.utf8.count)
 
     let _ = msg.withCString( { (msgPtr) -> UInt in
         log_msg_swift(pointer: msgPtr, size: printCount, level: 3, ident: CURRENT_IDENT)
+        return 0
+    })
+}
+
+public func LogWarn(msg: String) {
+    let printCount = Int32(msg.utf8.count)
+
+    let _ = msg.withCString( { (msgPtr) -> UInt in
+        log_msg_swift(pointer: msgPtr, size: printCount, level: 2, ident: CURRENT_IDENT)
+        return 0
+    })
+}
+
+public func LogErr(msg: String) {
+    let printCount = Int32(msg.utf8.count)
+
+    let _ = msg.withCString( { (msgPtr) -> UInt in
+        log_msg_swift(pointer: msgPtr, size: printCount, level: 1, ident: CURRENT_IDENT)
         return 0
     })
 }
