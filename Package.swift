@@ -6,12 +6,12 @@ import PackageDescription
 let package = Package(
     name: "Suborbital",
     products: [
-        .library(name: "Suborbital", targets: ["SuborbitalLib"]),
+        .library(name: "Suborbital", targets: ["Suborbital"]),
     ],
     dependencies: [],
     targets: [
         .target(
-            name: "SuborbitalLib",
+            name: "Suborbital",
             dependencies: [],
             path: "api/swift/Sources"),
     ]
