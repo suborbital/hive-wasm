@@ -27,28 +27,22 @@ public func Set(runnable: Runnable) {
 }
 
 public func LogInfo(msg: String) {
-    let printCount = Int32(msg.utf8.count)
-
-    let _ = msg.withCString( { (msgPtr) -> UInt in
-        log_msg_swift(pointer: msgPtr, size: printCount, level: 3, ident: CURRENT_IDENT)
-        return 0
-    })
+    log(msg: msg, level: 3)
 }
 
 public func LogWarn(msg: String) {
-    let printCount = Int32(msg.utf8.count)
-
-    let _ = msg.withCString( { (msgPtr) -> UInt in
-        log_msg_swift(pointer: msgPtr, size: printCount, level: 2, ident: CURRENT_IDENT)
-        return 0
-    })
+    log(msg: msg, level: 2)
 }
 
 public func LogErr(msg: String) {
+    log(msg: msg, level: 1)
+}
+
+func log(msg: String, level: Int32) {
     let printCount = Int32(msg.utf8.count)
 
     let _ = msg.withCString( { (msgPtr) -> UInt in
-        log_msg_swift(pointer: msgPtr, size: printCount, level: 1, ident: CURRENT_IDENT)
+        log_msg_swift(pointer: msgPtr, size: printCount, level: level, ident: CURRENT_IDENT)
         return 0
     })
 }

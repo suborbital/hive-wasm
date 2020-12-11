@@ -76,7 +76,7 @@ func TestSwiftRaw(t *testing.T) {
 func TestSwiftPackage(t *testing.T) {
 	h := hive.New()
 
-	doWasm := h.Handle("wasm", NewRunner("./testdata/suborbital.wasm"))
+	doWasm := h.Handle("wasm", NewRunner("./testdata/Suborbital.wasm"))
 
 	res, err := doWasm("what is up").Then()
 	if err != nil {
@@ -84,8 +84,8 @@ func TestSwiftPackage(t *testing.T) {
 		return
 	}
 
-	if string(res.([]byte)) != "why hello what is up" {
-		t.Error(fmt.Errorf("expected 'why hello what is up', got %q", string(res.([]byte))))
+	if string(res.([]byte)) != "oh hello what is up" {
+		t.Error(fmt.Errorf("expected 'oh hello what is up', got %q", string(res.([]byte))))
 	}
 }
 
