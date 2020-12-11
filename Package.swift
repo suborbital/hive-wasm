@@ -4,14 +4,14 @@
 import PackageDescription
 
 let package = Package(
-    name: "suborbital",
+    name: "Suborbital",
     products: [
-        .library(name: "suborbital", targets: ["suborbital"]),
+        .library(name: "Suborbital", targets: ["Suborbital"]),
     ],
     dependencies: [],
     targets: [
         .target(
-            name: "suborbital",
+            name: "Suborbital",
             dependencies: [],
             path: "api/swift/Sources"),
     ]
