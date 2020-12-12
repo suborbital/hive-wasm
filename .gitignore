@@ -5,3 +5,6 @@ runnables.wasm.zip
 .DS_Store
 
 target
+
+.build
+Suborbital.wasm
