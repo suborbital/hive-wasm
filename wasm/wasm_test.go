@@ -76,7 +76,7 @@ func TestSwiftRaw(t *testing.T) {
 func TestSwiftPackage(t *testing.T) {
 	h := hive.New()
 
-	doWasm := h.Handle("wasm", NewRunner("./testdata/Suborbital.wasm"))
+	doWasm := h.Handle("wasm", NewRunner("./testdata/suborbital.wasm"))
 
 	res, err := doWasm("what is up").Then()
 	if err != nil {
