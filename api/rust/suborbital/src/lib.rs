@@ -134,9 +134,9 @@ pub mod request {
     use serde_json::{Value, Map};
 
     pub struct Request {
-        url: String,
-        body: String,
-        state: Map<String, Value>,
+        pub url: String,
+        pub body: String,
+        pub state: Map<String, Value>,
     }
 
     pub fn from_json(input: Vec<u8>) -> Option<Request> {
