@@ -1,7 +1,7 @@
 version: v0.0.1
 identifier: com.suborbital.test
 
-functions:
+runnables:
   - name: example
     namespace: default
   - name: fetch

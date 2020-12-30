@@ -12,7 +12,7 @@ import (
 
 func main() {
 	files := []os.File{}
-	for _, filename := range []string{"helloworld-rs.wasm", "hivew_rs_builder.wasm", "swiftc_runnable.wasm"} {
+	for _, filename := range []string{"fetch.wasm", "log_example.wasm", "example.wasm"} {
 		path := filepath.Join("./", "wasm", "testdata", filename)
 
 		file, err := os.Open(path)
@@ -26,18 +26,18 @@ func main() {
 	directive := &directive.Directive{
 		Identifier: "dev.suborbital.appname",
 		Version:    "v0.1.1",
-		Functions: []directive.Function{
+		Runnables: []directive.Runnable{
 			{
-				Name:      "helloworld-rs",
-				NameSpace: "default",
+				Name:      "fetch",
+				Namespace: "default",
 			},
 			{
-				Name:      "hivew_rs_builder",
-				NameSpace: "default",
+				Name:      "log_example",
+				Namespace: "default",
 			},
 			{
-				Name:      "swiftc_runnable",
-				NameSpace: "default",
+				Name:      "example",
+				Namespace: "default",
 			},
 		},
 		Handlers: []directive.Handler{
@@ -49,21 +49,32 @@ func main() {
 				},
 				Steps: []directive.Executable{
 					{
-						Fn: "swiftc_runnable",
+						Group: []directive.CallableFn{
+							{
+								Fn: "fetch",
+								As: "ghData",
+							},
+							{
+								Fn: "log_example",
+							},
+						},
 					},
 					{
-						Fn: "helloworld-rs",
-					},
-					{
-						Fn: "hivew_rs_builder",
+						CallableFn: directive.CallableFn{
+							Fn: "example",
+							With: []string{
+								"data: ghData",
+							},
+						},
 					},
 				},
+				Response: "ghData",
 			},
 		},
 	}
 
 	if err := directive.Validate(); err != nil {
-		log.Fatal("failed to validate directive", err)
+		log.Fatal("failed to validate directive: ", err)
 	}
 
 	if err := bundle.Write(directive, files, "./runnables.wasm.zip"); err != nil {
