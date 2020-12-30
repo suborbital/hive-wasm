@@ -9,18 +9,18 @@ func TestYAMLMarshalUnmarshal(t *testing.T) {
 	dir := Directive{
 		Identifier: "dev.suborbital.appname",
 		Version:    "v0.1.1",
-		Functions: []Function{
+		Runnables: []Runnable{
 			{
 				Name:      "getUser",
-				NameSpace: "db",
+				Namespace: "db",
 			},
 			{
 				Name:      "getUserDetails",
-				NameSpace: "db",
+				Namespace: "db",
 			},
 			{
 				Name:      "returnUser",
-				NameSpace: "api",
+				Namespace: "api",
 			},
 		},
 		Handlers: []Handler{
@@ -32,13 +32,19 @@ func TestYAMLMarshalUnmarshal(t *testing.T) {
 				},
 				Steps: []Executable{
 					{
-						Group: []string{
-							"db#getUser",
-							"db#getUserDetails",
+						Group: []CallableFn{
+							{
+								Fn: "db#getUser",
+							},
+							{
+								Fn: "db#getUserDetails",
+							},
 						},
 					},
 					{
-						Fn: "api#returnUser",
+						CallableFn: CallableFn{
+							Fn: "api#returnUser",
+						},
 					},
 				},
 			},
@@ -66,7 +72,7 @@ func TestYAMLMarshalUnmarshal(t *testing.T) {
 		return
 	}
 
-	if len(dir2.Functions) != 3 {
+	if len(dir2.Runnables) != 3 {
 		t.Error("wrong number of steps")
 		return
 	}
@@ -76,18 +82,18 @@ func TestDirectiveValidatorGroupLast(t *testing.T) {
 	dir := Directive{
 		Identifier: "dev.suborbital.appname",
 		Version:    "v0.1.1",
-		Functions: []Function{
+		Runnables: []Runnable{
 			{
 				Name:      "getUser",
-				NameSpace: "db",
+				Namespace: "db",
 			},
 			{
 				Name:      "getUserDetails",
-				NameSpace: "db",
+				Namespace: "db",
 			},
 			{
 				Name:      "returnUser",
-				NameSpace: "api",
+				Namespace: "api",
 			},
 		},
 		Handlers: []Handler{
@@ -99,12 +105,18 @@ func TestDirectiveValidatorGroupLast(t *testing.T) {
 				},
 				Steps: []Executable{
 					{
-						Fn: "returnUser",
+						CallableFn: CallableFn{
+							Fn: "api#returnUser",
+						},
 					},
 					{
-						Group: []string{
-							"getUser",
-							"getUserDetails",
+						Group: []CallableFn{
+							{
+								Fn: "db#getUser",
+							},
+							{
+								Fn: "db#getUserDetails",
+							},
 						},
 					},
 				},
@@ -123,18 +135,18 @@ func TestDirectiveValidatorMissingFns(t *testing.T) {
 	dir := Directive{
 		Identifier: "dev.suborbital.appname",
 		Version:    "v0.1.1",
-		Functions: []Function{
+		Runnables: []Runnable{
 			{
 				Name:      "getUser",
-				NameSpace: "db",
+				Namespace: "db",
 			},
 			{
 				Name:      "getUserDetails",
-				NameSpace: "db",
+				Namespace: "db",
 			},
 			{
 				Name:      "returnUser",
-				NameSpace: "api",
+				Namespace: "api",
 			},
 		},
 		Handlers: []Handler{
@@ -146,13 +158,14 @@ func TestDirectiveValidatorMissingFns(t *testing.T) {
 				},
 				Steps: []Executable{
 					{
-						Group: []string{
-							"getUser",
-							"getFoobar",
+						Group: []CallableFn{
+							{
+								Fn: "getUser",
+							},
+							{
+								Fn: "getFoobar",
+							},
 						},
-					},
-					{
-						Fn: "returnUser",
 					},
 				},
 			},
@@ -170,18 +183,18 @@ func TestDirectiveFQFNs(t *testing.T) {
 	dir := Directive{
 		Identifier: "dev.suborbital.appname",
 		Version:    "v0.1.1",
-		Functions: []Function{
+		Runnables: []Runnable{
 			{
 				Name:      "getUser",
-				NameSpace: "default",
+				Namespace: "default",
 			},
 			{
 				Name:      "getUserDetails",
-				NameSpace: "db",
+				Namespace: "db",
 			},
 			{
 				Name:      "returnUser",
-				NameSpace: "api",
+				Namespace: "api",
 			},
 		},
 	}
@@ -216,5 +229,56 @@ func TestDirectiveFQFNs(t *testing.T) {
 	_, err = dir.FQFN("foo#bar")
 	if err == nil {
 		t.Error("foo#bar should have errored")
+	}
+}
+
+func TestDirectiveValidatorWithMissingState(t *testing.T) {
+	dir := Directive{
+		Identifier: "dev.suborbital.appname",
+		Version:    "v0.1.1",
+		Runnables: []Runnable{
+			{
+				Name:      "getUser",
+				Namespace: "db",
+			},
+			{
+				Name:      "getUserDetails",
+				Namespace: "db",
+			},
+			{
+				Name:      "returnUser",
+				Namespace: "api",
+			},
+		},
+		Handlers: []Handler{
+			{
+				Input: Input{
+					Type:     "request",
+					Method:   "GET",
+					Resource: "/api/v1/user",
+				},
+				Steps: []Executable{
+					{
+						Group: []CallableFn{
+							{
+								Fn: "getUser",
+								With: []string{
+									"data: someData",
+								},
+							},
+							{
+								Fn: "getFoobar",
+							},
+						},
+					},
+				},
+			},
+		},
+	}
+
+	if err := dir.Validate(); err == nil {
+		t.Error("directive validation should have failed")
+	} else {
+		fmt.Println("directive validation properly failed:", err)
 	}
 }
