@@ -374,3 +374,26 @@ func TestWasmLargeDataGroupWithPool(t *testing.T) {
 		t.Error("group returned an error")
 	}
 }
+
+func TestWasmCacheGetSet(t *testing.T) {
+	h := hive.New()
+
+	doSet := h.Handle("set", NewRunner("./testdata/swift-set/swift-set.wasm"))
+	doGet := h.Handle("get", NewRunner("./testdata/swift-get/swift-get.wasm"))
+
+	_, err := doSet("important info").Then()
+	if err != nil {
+		t.Error(errors.Wrap(err, "failed to set cache value"))
+		return
+	}
+
+	r2, err := doGet("").Then()
+	if err != nil {
+		t.Error(errors.Wrap(err, "failed to get cache value"))
+		return
+	}
+
+	if string(r2.([]byte)) != "important info" {
+		t.Error(fmt.Errorf("did not get expected output"))
+	}
+}
