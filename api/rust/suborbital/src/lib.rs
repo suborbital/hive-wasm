@@ -131,6 +131,57 @@ pub mod net {
     }
 }
 
+pub mod cache {
+    use std::slice;
+
+    extern {
+        fn cache_set(key_pointer: *const u8, key_size: i32, value_pointer: *const u8, value_size: i32, ttl: i32, ident: i32) -> i32;
+        fn cache_get(key_pointer: *const u8, key_size: i32, dest_pointer: *const u8, dest_max_size: i32, ident: i32) -> i32;
+    }
+
+    pub fn set(key: &str, val: Vec<u8>, ttl: i32) {
+        let val_slice = val.as_slice();
+        let val_ptr = val_slice.as_ptr();
+
+        unsafe {
+            cache_set(key.as_ptr(), key.len() as i32, val_ptr, val.len() as i32, ttl, super::STATE.ident);
+        }
+    }
+
+    pub fn get(key: &str) -> Option<Vec<u8>> {
+        let mut dest_pointer: *const u8;
+        let mut result_size: i32;
+        let mut capacity: i32 = 256000;
+
+        // make the request, and if the response size is greater than that of capacity, double the capacity and try again
+        loop {
+            let cap = &mut capacity;
+
+            let mut dest_bytes = Vec::with_capacity(*cap as usize);
+            let dest_slice = dest_bytes.as_mut_slice();
+            dest_pointer = dest_slice.as_mut_ptr() as *const u8;
+    
+            // do the request over FFI
+            result_size = unsafe { cache_get(key.as_ptr(), key.len() as i32, dest_pointer, *cap, super::STATE.ident) };
+
+            if result_size < 0 {
+                return None;
+            } else if result_size > *cap {
+                super::log::info(format!("doubling capacity, need {}", result_size).as_str());
+                *cap *= 2;
+            } else {
+                break;
+            }
+        }
+
+        let result: &[u8] = unsafe {
+            slice::from_raw_parts(dest_pointer, result_size as usize)
+        };
+
+        Some(Vec::from(result))
+    }
+}
+
 #[allow(dead_code)]
 pub mod request {
     use serde_json::{Value, Map};
