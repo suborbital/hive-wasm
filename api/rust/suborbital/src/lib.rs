@@ -91,11 +91,13 @@ pub mod runnable {
 pub mod net {
     use std::slice;
 
+    static METHOD_GET: i32 = 1;
+
     extern {
-        fn fetch_url(url_pointer: *const u8, url_size: i32, dest_pointer: *const u8, dest_max_size: i32, ident: i32) -> i32;
+        fn fetch_url(method: i32, url_pointer: *const u8, url_size: i32, body_pointer: *const u8, body_size: i32, dest_pointer: *const u8, dest_max_size: i32, ident: i32) -> i32;
     }
 
-    pub fn fetch(url: &str) -> Vec<u8> {
+    pub fn get(url: &str) -> Vec<u8> {
         let mut dest_pointer: *const u8;
         let mut dest_size: i32;
         let mut capacity: i32 = 256000;
@@ -109,7 +111,7 @@ pub mod net {
             dest_pointer = dest_slice.as_mut_ptr() as *const u8;
     
             // do the request over FFI
-            dest_size = unsafe { fetch_url(url.as_ptr(), url.len() as i32, dest_pointer, *cap, super::STATE.ident) };
+            dest_size = unsafe { fetch_url(METHOD_GET, url.as_ptr(), url.len() as i32, 0 as *const u8, 0 as i32, dest_pointer, *cap, super::STATE.ident) };
 
             if dest_size < 0 {
                 return Vec::from(format!("request_failed:{}", dest_size))

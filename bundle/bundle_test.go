@@ -27,12 +27,12 @@ func TestRead(t *testing.T) {
 
 	hasDefault := false
 	for _, r := range bundle.Runnables {
-		if r.Name == "example.wasm" {
+		if r.Name == "hello-echo.wasm" {
 			hasDefault = true
 		}
 	}
 
 	if !hasDefault {
-		t.Error("default example.wasm not found in bundle")
+		t.Error("hello-echo.wasm runnable not found in bundle")
 	}
 }

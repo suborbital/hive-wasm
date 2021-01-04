@@ -2,9 +2,9 @@ version: v0.0.1
 identifier: com.suborbital.test
 
 runnables:
-  - name: example
+  - name: hello-echo
     namespace: default
   - name: fetch
     namespace: default
-  - name: log_example
+  - name: log
     namespace: default
