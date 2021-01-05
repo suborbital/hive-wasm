@@ -116,8 +116,8 @@ pub mod net {
             if dest_size < 0 {
                 return Vec::from(format!("request_failed:{}", dest_size))
             } else if dest_size > *cap {
-                super::log::info(format!("doubling capacity, need {}", dest_size).as_str());
-                *cap *= 2;
+                super::log::info(format!("increasing capacity, need {}", dest_size).as_str());
+                *cap = dest_size;
             } else {
                 break;
             }
@@ -167,8 +167,8 @@ pub mod cache {
             if result_size < 0 {
                 return None;
             } else if result_size > *cap {
-                super::log::info(format!("doubling capacity, need {}", result_size).as_str());
-                *cap *= 2;
+                super::log::info(format!("increasing capacity, need {}", result_size).as_str());
+                *cap = result_size;
             } else {
                 break;
             }

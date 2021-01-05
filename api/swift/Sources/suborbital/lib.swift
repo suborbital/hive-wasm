@@ -30,45 +30,35 @@ public func Set(runnable: Runnable) {
     RUNNABLE = runnable
 }
 
-public func CacheSet(key: String, value: String, ttl: Int) {
-    let keyCount = Int32(key.utf8.count)
-    let valCount = Int32(value.utf8.count)
-    
-    let _ = key.withCString({ (keyPtr) -> UInt in
-        let _ = value.withCString({ (valPtr) -> UInt in
-            let _ = cache_set_swift(key_pointer: keyPtr, key_size: keyCount, value_pointer: valPtr, value_size: valCount, ttl: Int32(ttl), ident: CURRENT_IDENT)
-            return 0
-        })
+public func CacheSet(key: String, value: String, ttl: Int) {    
+    let keyFFI = toFFI(val: key)
+    let valFFI = toFFI(val: value)
 
-        return 0
-    })
+    let _ = cache_set_swift(key_pointer: keyFFI.0, key_size: keyFFI.1, value_pointer: valFFI.0, value_size: valFFI.1, ttl: Int32(ttl), ident: CURRENT_IDENT)
 }
 
-public func CacheGet(key: String) -> String {
-    let keyCount = Int32(key.utf8.count)
-    
+public func CacheGet(key: String) -> String {    
     var maxSize: Int32 = 256000
     var retVal = ""
 
-    let _ = key.withCString({ (keyPtr) -> UInt in
-        while true {
-            let ptr = allocate(size: Int(maxSize)) 
-            let resultSize = cache_get_swift(key_pointer: keyPtr, key_size: keyCount, dest_pointer: ptr, dest_max_size: maxSize, ident: CURRENT_IDENT)
+    let keyFFI = toFFI(val: key)
 
-            if resultSize < 0 {
-                retVal = "failed to get from cache"
-                break
-            } else if resultSize > maxSize {
-                maxSize *= 2
-            } else {
-                let typed: UnsafeMutablePointer<UInt8> = ptr.bindMemory(to: UInt8.self, capacity: Int(resultSize))
-                retVal = String(cString: typed)
-                break
-            }
+    // loop until the returned size is within the defined max size, increasing it as needed
+    while true {
+        let ptr = allocate(size: Int(maxSize))
+
+        let resultSize = cache_get_swift(key_pointer: keyFFI.0, key_size: keyFFI.1, dest_pointer: ptr, dest_max_size: maxSize, ident: CURRENT_IDENT)
+
+        if resultSize < 0 {
+            retVal = "failed to get from cache"
+            break
+        } else if resultSize > maxSize {
+            maxSize = resultSize
+        } else {
+            retVal = fromFFI(ptr: ptr, size: resultSize)
+            break
         }
-
-        return 0
-    })
+    }
     
     return retVal
 }
@@ -86,32 +76,24 @@ public func LogErr(msg: String) {
 }
 
 func log(msg: String, level: Int32) {
-    let printCount = Int32(msg.utf8.count)
+    let msgFFI = toFFI(val: msg)
 
-    let _ = msg.withCString( { (msgPtr) -> UInt in
-        log_msg_swift(pointer: msgPtr, size: printCount, level: level, ident: CURRENT_IDENT)
-        return 0
-    })
+    log_msg_swift(pointer: msgFFI.0, size: msgFFI.1, level: level, ident: CURRENT_IDENT)
 }
 
 @_cdecl("run_e")
 func run_e(pointer: UnsafeRawPointer, size: Int32, ident: Int32) {
     CURRENT_IDENT = ident
     
-    // convert the bytes to a string
-    let typed: UnsafePointer<UInt8> = pointer.bindMemory(to: UInt8.self, capacity: Int(size))
-    let inString = String(cString: typed)
+    let inString = fromFFI(ptr: pointer, size: size)
     
     // call the user-provided run function
     let retString = RUNNABLE.run(input: inString)
 
     // convert the output to a usable pointer/size combo
-    let count = Int32(retString.utf8.count)
-    
-    let _ = retString.withCString({ (retPtr) -> UInt in
-        return_result(result_pointer: retPtr, result_size: count, ident: ident)
-        return 0
-    })
+    let retVal = toFFI(val: retString)
+
+    return_result(result_pointer: retVal.0, result_size: retVal.1, ident: ident)
 }
 
 @_cdecl("allocate")
@@ -123,4 +105,26 @@ func allocate(size: Int) -> UnsafeMutableRawPointer {
 func deallocate(pointer: UnsafeRawPointer, size: Int) {
     let ptr: UnsafePointer<UInt8> = pointer.bindMemory(to: UInt8.self, capacity: Int(size))
     ptr.deallocate()
+}
+
+func toFFI(val: String) -> (UnsafePointer<Int8>, Int32) {
+    // create a nil (optional) pointer
+    var ptr: UnsafePointer<Int8>? = UnsafePointer<Int8>(bitPattern: 0)
+    let size = Int32(val.utf8.count)
+
+    // grab the pointer in a closure and give the optional a real value
+    let _ = val.withCString({ (valPtr) -> UInt in
+        ptr = valPtr
+        return 0
+    })
+
+    // unwrap the optional before returning
+    return (ptr!, size)
+}
+
+func fromFFI(ptr: UnsafeRawPointer, size: Int32) -> String {
+    let typed: UnsafePointer<UInt8> = ptr.bindMemory(to: UInt8.self, capacity: Int(size))
+    let val = String(cString: typed)
+    
+    return val
 }
