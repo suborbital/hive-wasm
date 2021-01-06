@@ -91,11 +91,13 @@ pub mod runnable {
 pub mod net {
     use std::slice;
 
+    static METHOD_GET: i32 = 1;
+
     extern {
-        fn fetch_url(url_pointer: *const u8, url_size: i32, dest_pointer: *const u8, dest_max_size: i32, ident: i32) -> i32;
+        fn fetch_url(method: i32, url_pointer: *const u8, url_size: i32, body_pointer: *const u8, body_size: i32, dest_pointer: *const u8, dest_max_size: i32, ident: i32) -> i32;
     }
 
-    pub fn fetch(url: &str) -> Vec<u8> {
+    pub fn get(url: &str) -> Vec<u8> {
         let mut dest_pointer: *const u8;
         let mut dest_size: i32;
         let mut capacity: i32 = 256000;
@@ -109,13 +111,13 @@ pub mod net {
             dest_pointer = dest_slice.as_mut_ptr() as *const u8;
     
             // do the request over FFI
-            dest_size = unsafe { fetch_url(url.as_ptr(), url.len() as i32, dest_pointer, *cap, super::STATE.ident) };
+            dest_size = unsafe { fetch_url(METHOD_GET, url.as_ptr(), url.len() as i32, 0 as *const u8, 0 as i32, dest_pointer, *cap, super::STATE.ident) };
 
             if dest_size < 0 {
                 return Vec::from(format!("request_failed:{}", dest_size))
             } else if dest_size > *cap {
-                super::log::info(format!("doubling capacity, need {}", dest_size).as_str());
-                *cap *= 2;
+                super::log::info(format!("increasing capacity, need {}", dest_size).as_str());
+                *cap = dest_size;
             } else {
                 break;
             }
@@ -126,6 +128,57 @@ pub mod net {
         };
 
         return Vec::from(result)
+    }
+}
+
+pub mod cache {
+    use std::slice;
+
+    extern {
+        fn cache_set(key_pointer: *const u8, key_size: i32, value_pointer: *const u8, value_size: i32, ttl: i32, ident: i32) -> i32;
+        fn cache_get(key_pointer: *const u8, key_size: i32, dest_pointer: *const u8, dest_max_size: i32, ident: i32) -> i32;
+    }
+
+    pub fn set(key: &str, val: Vec<u8>, ttl: i32) {
+        let val_slice = val.as_slice();
+        let val_ptr = val_slice.as_ptr();
+
+        unsafe {
+            cache_set(key.as_ptr(), key.len() as i32, val_ptr, val.len() as i32, ttl, super::STATE.ident);
+        }
+    }
+
+    pub fn get(key: &str) -> Option<Vec<u8>> {
+        let mut dest_pointer: *const u8;
+        let mut result_size: i32;
+        let mut capacity: i32 = 256000;
+
+        // make the request, and if the response size is greater than that of capacity, double the capacity and try again
+        loop {
+            let cap = &mut capacity;
+
+            let mut dest_bytes = Vec::with_capacity(*cap as usize);
+            let dest_slice = dest_bytes.as_mut_slice();
+            dest_pointer = dest_slice.as_mut_ptr() as *const u8;
+    
+            // do the request over FFI
+            result_size = unsafe { cache_get(key.as_ptr(), key.len() as i32, dest_pointer, *cap, super::STATE.ident) };
+
+            if result_size < 0 {
+                return None;
+            } else if result_size > *cap {
+                super::log::info(format!("increasing capacity, need {}", result_size).as_str());
+                *cap = result_size;
+            } else {
+                break;
+            }
+        }
+
+        let result: &[u8] = unsafe {
+            slice::from_raw_parts(dest_pointer, result_size as usize)
+        };
+
+        Some(Vec::from(result))
     }
 }
 
