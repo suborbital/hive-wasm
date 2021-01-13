@@ -4,7 +4,9 @@ import (
 	"fmt"
 	"testing"
 
+	"github.com/google/uuid"
 	"github.com/pkg/errors"
+	"github.com/suborbital/hive-wasm/request"
 	"github.com/suborbital/hive/hive"
 )
 
@@ -62,7 +64,21 @@ func TestSwiftPackage(t *testing.T) {
 
 	doWasm := h.Handle("wasm", NewRunner("./testdata/swift-echo/swift-echo.wasm"))
 
-	res, err := doWasm("what is up").Then()
+	req := &request.CoordinatedRequest{
+		Method: "GET",
+		URL:    "/hello/world",
+		ID:     uuid.New().String(),
+		State: map[string][]byte{
+			"hello": []byte("what is up"),
+		},
+	}
+
+	reqJSON, err := req.ToJSON()
+	if err != nil {
+		t.Error("failed to ToJSON", err)
+	}
+
+	res, err := doWasm(reqJSON).Then()
 	if err != nil {
 		t.Error(errors.Wrap(err, "failed to Then"))
 		return
