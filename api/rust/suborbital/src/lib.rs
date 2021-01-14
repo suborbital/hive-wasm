@@ -88,7 +88,7 @@ pub mod runnable {
     }
 }
 
-pub mod net {
+pub mod http {
     use std::slice;
 
     static METHOD_GET: i32 = 1;
