@@ -11,7 +11,11 @@ import (
 	"github.com/suborbital/hive/hive"
 )
 
-func TestWasmRunnerRawWithFetch(t *testing.T) {
+type testBody struct {
+	Username string `json:"username"`
+}
+
+func TestWasmRunnerWithFetch(t *testing.T) {
 	h := hive.New()
 
 	// test a WASM module that was directly compiled from the hivew-rs-builder repo
@@ -28,12 +32,34 @@ func TestWasmRunnerRawWithFetch(t *testing.T) {
 	}
 }
 
-func TestWasmRunner(t *testing.T) {
+func TestWasmRunnerWithRequest(t *testing.T) {
 	h := hive.New()
 
-	doWasm := h.Handle("wasm", NewRunner("./testdata/hello-echo/hello-echo.wasm"))
+	// using a Rust module
+	doWasm := h.Handle("wasm", NewRunner("./testdata/log/log.wasm"))
 
-	res, err := doWasm([]byte("what is up")).Then()
+	body := testBody{
+		Username: "cohix",
+	}
+
+	bodyJSON, _ := json.Marshal(body)
+
+	req := &request.CoordinatedRequest{
+		Method: "GET",
+		URL:    "/hello/world",
+		ID:     uuid.New().String(),
+		Body:   bodyJSON,
+		State: map[string][]byte{
+			"hello": []byte("what is up"),
+		},
+	}
+
+	reqJSON, err := req.ToJSON()
+	if err != nil {
+		t.Error("failed to ToJSON", err)
+	}
+
+	res, err := doWasm(reqJSON).Then()
 	if err != nil {
 		t.Error(errors.Wrap(err, "failed to Then"))
 		return
@@ -44,27 +70,7 @@ func TestWasmRunner(t *testing.T) {
 	}
 }
 
-func TestWasmRunnerWithLog(t *testing.T) {
-	h := hive.New()
-
-	doWasm := h.Handle("wasm", NewRunner("./testdata/log/log.wasm"))
-
-	res, err := doWasm([]byte("what is up")).Then()
-	if err != nil {
-		t.Error(errors.Wrap(err, "failed to Then"))
-		return
-	}
-
-	if string(res.([]byte)) != "hello" {
-		t.Error(fmt.Errorf("expected 'hello', got %s", string(res.([]byte))))
-	}
-}
-
-type testBody struct {
-	Username string `json:"username"`
-}
-
-func TestSwiftPackage(t *testing.T) {
+func TestWasmRunnerSwift(t *testing.T) {
 	h := hive.New()
 
 	doWasm := h.Handle("wasm", NewRunner("./testdata/swift-echo/swift-echo.wasm"))

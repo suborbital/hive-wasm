@@ -2,11 +2,11 @@
 @_silgen_name("return_result_swift")
 func return_result(result_pointer: UnsafeRawPointer, result_size: Int32, ident: Int32)
 @_silgen_name("log_msg_swift")
-func log_msg_swift(pointer: UnsafeRawPointer, size: Int32, level: Int32, ident: Int32)
+func log_msg(pointer: UnsafeRawPointer, size: Int32, level: Int32, ident: Int32)
 @_silgen_name("cache_set_swift")
-func cache_set_swift(key_pointer: UnsafeRawPointer, key_size: Int32, value_pointer: UnsafeRawPointer, value_size: Int32, ttl: Int32, ident: Int32) -> Int32
+func cache_set(key_pointer: UnsafeRawPointer, key_size: Int32, value_pointer: UnsafeRawPointer, value_size: Int32, ttl: Int32, ident: Int32) -> Int32
 @_silgen_name("cache_get_swift")
-func cache_get_swift(key_pointer: UnsafeRawPointer, key_size: Int32, dest_pointer: UnsafeRawPointer, dest_max_size: Int32, ident: Int32) -> Int32
+func cache_get(key_pointer: UnsafeRawPointer, key_size: Int32, dest_pointer: UnsafeRawPointer, dest_max_size: Int32, ident: Int32) -> Int32
 @_silgen_name("request_get_field_swift")
 func request_get_field(field_type: Int32, key_pointer: UnsafeRawPointer, key_size: Int32, dest_pointer: UnsafeRawPointer, dest_max_size: Int32, ident: Int32) -> Int32
 
@@ -36,7 +36,7 @@ public func CacheSet(key: String, value: String, ttl: Int) {
     let keyFFI = toFFI(val: key)
     let valFFI = toFFI(val: value)
 
-    let _ = cache_set_swift(key_pointer: keyFFI.0, key_size: keyFFI.1, value_pointer: valFFI.0, value_size: valFFI.1, ttl: Int32(ttl), ident: CURRENT_IDENT)
+    let _ = cache_set(key_pointer: keyFFI.0, key_size: keyFFI.1, value_pointer: valFFI.0, value_size: valFFI.1, ttl: Int32(ttl), ident: CURRENT_IDENT)
 }
 
 public func CacheGet(key: String) -> String {    
@@ -49,7 +49,7 @@ public func CacheGet(key: String) -> String {
     while true {
         let ptr = allocate(size: Int32(maxSize))
 
-        let resultSize = cache_get_swift(key_pointer: keyFFI.0, key_size: keyFFI.1, dest_pointer: ptr, dest_max_size: maxSize, ident: CURRENT_IDENT)
+        let resultSize = cache_get(key_pointer: keyFFI.0, key_size: keyFFI.1, dest_pointer: ptr, dest_max_size: maxSize, ident: CURRENT_IDENT)
 
         if resultSize < 0 {
             retVal = "failed to get from cache"
@@ -80,7 +80,7 @@ public func LogErr(msg: String) {
 func log(msg: String, level: Int32) {
     let msgFFI = toFFI(val: msg)
 
-    log_msg_swift(pointer: msgFFI.0, size: msgFFI.1, level: level, ident: CURRENT_IDENT)
+    log_msg(pointer: msgFFI.0, size: msgFFI.1, level: level, ident: CURRENT_IDENT)
 }
 
 let fieldTypeMeta = Int32(0)

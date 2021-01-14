@@ -422,10 +422,8 @@ func cache_set(context unsafe.Pointer, keyPointer int32, keySize int32, valPoint
 	key := inst.readMemory(keyPointer, keySize)
 	val := inst.readMemory(valPointer, valSize)
 
-	fmt.Println("setting cache key", string(key))
-
 	if err := inst.hiveCtx.Cache.Set(string(key), val, int(ttl)); err != nil {
-		fmt.Println("failed to set cache key", string(key), err.Error())
+		logger.ErrorString("[hive-wasm] failed to set cache key", string(key), err.Error())
 		return -2
 	}
 
@@ -447,11 +445,9 @@ func cache_get(context unsafe.Pointer, keyPointer int32, keySize int32, destPoin
 
 	key := inst.readMemory(keyPointer, keySize)
 
-	fmt.Println("getting cache key", string(key))
-
 	val, err := inst.hiveCtx.Cache.Get(string(key))
 	if err != nil {
-		fmt.Println("failed to get cache key", key, err.Error())
+		logger.ErrorString("[hive-wasm] failed to get cache key", key, err.Error())
 		return -2
 	}
 
@@ -517,7 +513,7 @@ func request_get_field(context unsafe.Pointer, fieldType int32, keyPointer int32
 	}
 
 	if inst.request == nil {
-		logger.ErrorString("[hive-wasm] alert: Runnable attempted to access request when none is set")
+		logger.ErrorString("[hive-wasm] Runnable attempted to access request when none is set")
 		return -2
 	}
 
