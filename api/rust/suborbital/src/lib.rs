@@ -151,7 +151,7 @@ pub mod cache {
     pub fn get(key: &str) -> Option<Vec<u8>> {
         let mut dest_pointer: *const u8;
         let mut result_size: i32;
-        let mut capacity: i32 = 256000;
+        let mut capacity: i32 = 1024;
 
         // make the request, and if the response size is greater than that of capacity, double the capacity and try again
         loop {
@@ -182,30 +182,107 @@ pub mod cache {
     }
 }
 
-#[allow(dead_code)]
-pub mod request {
-    use serde_json::{Value, Map};
+pub mod req {
+    use std::slice;
+    use super::util;
 
-    pub struct Request {
-        pub url: String,
-        pub body: String,
-        pub state: Map<String, Value>,
+    extern {
+        fn request_get_field(field_type: i32, key_pointer: *const u8, key_size: i32, dest_pointer: *const u8, dest_max_size: i32, ident: i32) -> i32;
     }
 
-    pub fn from_json(input: Vec<u8>) -> Option<Request> {
-        let v: Value = match serde_json::from_slice(&input) {
-            Ok(val) => val,
-            Err(_) => {
-                return None
-            },
+    static FIELD_TYPE_META: i32 = 0 as i32;
+    static FIELD_TYPE_BODY: i32 = 1 as i32;
+    static FIELD_TYPE_HEADER: i32 = 2 as i32;
+    static FIELD_TYPE_PARAMS: i32 = 3 as i32;
+    static FIELD_TYPE_STATE: i32 = 4 as i32;
+
+    pub fn method() -> String {
+        match get_field(FIELD_TYPE_META, "method") {
+            Some(bytes) => return util::to_string(bytes),
+            None => return String::from("")
+        }
+    }
+    
+    pub fn url() -> String {
+        match get_field(FIELD_TYPE_META, "url") {
+            Some(bytes) => return util::to_string(bytes),
+            None => return String::from("")
+        }
+    }
+    
+    pub fn id() -> String {
+        match get_field(FIELD_TYPE_META, "id") {
+            Some(bytes) => return util::to_string(bytes),
+            None => return String::from("")
+        }
+    }
+    
+    pub fn body_raw() -> Vec<u8> {
+        match get_field(FIELD_TYPE_META, "body") {
+            Some(bytes) => return bytes,
+            None => return util::to_vec(String::from(""))
+        }
+    }
+
+    pub fn body_field(key: &str) -> String {
+        match get_field(FIELD_TYPE_BODY, key) {
+            Some(bytes) => return util::to_string(bytes),
+            None => return String::from("")
+        }
+    }
+    
+    pub fn header(key: &str) -> String {
+        match get_field(FIELD_TYPE_HEADER, key) {
+            Some(bytes) => return util::to_string(bytes),
+            None => return String::from("")
+        }
+    }
+    
+    pub fn url_param(key: &str) -> String {
+        match get_field(FIELD_TYPE_PARAMS, key) {
+            Some(bytes) => return util::to_string(bytes),
+            None => return String::from("")
+        }
+    }
+    
+    pub fn state(key: &str) -> String {
+        match get_field(FIELD_TYPE_STATE, key) {
+            Some(bytes) => return util::to_string(bytes),
+            None => return String::from("")
+        }
+    }
+    
+    fn get_field(field_type: i32, key: &str) -> Option<Vec<u8>> {
+        let mut dest_pointer: *const u8;
+        let mut result_size: i32;
+        let mut capacity: i32 = 1024;
+
+        // make the request, and if the response size is greater than that of capacity, double the capacity and try again
+        loop {
+            let cap = &mut capacity;
+
+            let mut dest_bytes = Vec::with_capacity(*cap as usize);
+            let dest_slice = dest_bytes.as_mut_slice();
+            dest_pointer = dest_slice.as_mut_ptr() as *const u8;
+    
+            // do the request over FFI
+            result_size = unsafe { request_get_field(field_type, key.as_ptr(), key.len() as i32, dest_pointer, *cap, super::STATE.ident) };
+
+            if result_size < 0 {
+                return None;
+            } else if result_size > *cap {
+                super::log::info(format!("increasing capacity, need {}", result_size).as_str());
+                *cap = result_size;
+            } else {
+                break;
+            }
+        }
+
+        let result: &[u8] = unsafe {
+            slice::from_raw_parts(dest_pointer, result_size as usize)
         };
-    
-        let url = String::from(v["url"].as_str().unwrap());
-        let body = String::from(v["body"].as_str().unwrap());
-        let state_map = v["state"].as_object().unwrap();
-    
-        let req = Request{ url: url, body: body, state: state_map.to_owned() };
-        Some(req)
+
+        Some(Vec::from(result))
     }
 }
 
