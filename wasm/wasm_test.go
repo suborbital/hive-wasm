@@ -32,6 +32,23 @@ func TestWasmRunnerWithFetch(t *testing.T) {
 	}
 }
 
+func TestWasmRunnerWithFetchSwift(t *testing.T) {
+	h := hive.New()
+
+	// test a WASM module that was directly compiled from the hivew-rs-builder repo
+	doWasm := h.Handle("wasm", NewRunner("./testdata/fetch-swift/fetch-swift.wasm"))
+
+	res, err := doWasm("https://1password.com").Then()
+	if err != nil {
+		t.Error(errors.Wrap(err, "failed to Then"))
+		return
+	}
+
+	if string(res.([]byte))[:100] != "<!doctype html><html lang=en data-language-url=/><head><meta charset=utf-8><meta name=viewport conte" {
+		t.Error(fmt.Errorf("expected 1password.com HTML, got %q", string(res.([]byte))[:100]))
+	}
+}
+
 func TestWasmRunnerWithRequest(t *testing.T) {
 	h := hive.New()
 

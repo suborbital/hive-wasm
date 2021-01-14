@@ -6,6 +6,7 @@ package wasm
 // extern void return_result_swift(void *context, int32_t pointer, int32_t size, int32_t ident, int32_t swiftself, int32_t swifterr);
 //
 // extern int32_t fetch_url(void *context, int32_t method, int32_t urlPointer, int32_t urlSize, int32_t bodyPointer, int32_t bodySize, int32_t destPointer, int32_t destMaxSize, int32_t ident);
+// extern int32_t fetch_url_swift(void *context, int32_t method, int32_t urlPointer, int32_t urlSize, int32_t bodyPointer, int32_t bodySize, int32_t destPointer, int32_t destMaxSize, int32_t ident, int32_t swiftself, int32_t swifterr);
 //
 // extern int32_t cache_set(void *context, int32_t keyPointer, int32_t keySize, int32_t valPointer, int32_t valSize, int32_t ttl, int32_t ident);
 // extern int32_t cache_set_swift(void *context, int32_t keyPointer, int32_t keySize, int32_t valPointer, int32_t valSize, int32_t ttl, int32_t ident, int32_t swiftself, int32_t swifterr);
@@ -171,6 +172,7 @@ func (w *wasmEnvironment) addInstance() error {
 	imports.AppendFunction("return_result_swift", return_result_swift, C.return_result_swift)
 
 	imports.AppendFunction("fetch_url", fetch_url, C.fetch_url)
+	imports.AppendFunction("fetch_url_swift", fetch_url_swift, C.fetch_url_swift)
 
 	imports.AppendFunction("cache_set", cache_set, C.cache_set)
 	imports.AppendFunction("cache_set_swift", cache_set_swift, C.cache_set_swift)
@@ -409,6 +411,11 @@ func fetch_url(context unsafe.Pointer, method int32, urlPointer int32, urlSize i
 	}
 
 	return int32(len(respBytes))
+}
+
+//export fetch_url_swift
+func fetch_url_swift(context unsafe.Pointer, method int32, urlPointer int32, urlSize int32, bodyPointer int32, bodySize int32, destPointer int32, destMaxSize int32, identifier int32, swiftself int32, swifterr int32) int32 {
+	return fetch_url(context, method, urlPointer, urlSize, bodyPointer, bodySize, destPointer, destMaxSize, identifier)
 }
 
 //export cache_set

@@ -1,12 +1,18 @@
 
 @_silgen_name("return_result_swift")
 func return_result(result_pointer: UnsafeRawPointer, result_size: Int32, ident: Int32)
+
 @_silgen_name("log_msg_swift")
 func log_msg(pointer: UnsafeRawPointer, size: Int32, level: Int32, ident: Int32)
+
+@_silgen_name("fetch_url_swift")
+func fetch_url(method: Int32, url_pointer: UnsafeRawPointer, url_size: Int32, body_pointer: UnsafeRawPointer, body_size: Int32, dest_pointer: UnsafeRawPointer, dest_max_size: Int32, ident: Int32) -> Int32
+
 @_silgen_name("cache_set_swift")
 func cache_set(key_pointer: UnsafeRawPointer, key_size: Int32, value_pointer: UnsafeRawPointer, value_size: Int32, ttl: Int32, ident: Int32) -> Int32
 @_silgen_name("cache_get_swift")
 func cache_get(key_pointer: UnsafeRawPointer, key_size: Int32, dest_pointer: UnsafeRawPointer, dest_max_size: Int32, ident: Int32) -> Int32
+
 @_silgen_name("request_get_field_swift")
 func request_get_field(field_type: Int32, key_pointer: UnsafeRawPointer, key_size: Int32, dest_pointer: UnsafeRawPointer, dest_max_size: Int32, ident: Int32) -> Int32
 
@@ -30,6 +36,39 @@ class defaultRunnable: Runnable {
 
 public func Set(runnable: Runnable) {
     RUNNABLE = runnable
+}
+
+let httpMethodGet = Int32(1)
+
+public func HttpGet(url: String) -> String {
+    return fetch(method: httpMethodGet, url: url)
+}
+
+func fetch(method: Int32, url: String) -> String {    
+    var maxSize: Int32 = 256000
+    var retVal = ""
+
+    let urlFFI = toFFI(val: url)
+
+    // loop until the returned size is within the defined max size, increasing it as needed
+    while true {
+        let dest_ptr = allocate(size: Int32(maxSize))
+        let body_ptr = allocate(size: Int32(0))
+
+        let resultSize = fetch_url(method: method, url_pointer: urlFFI.0, url_size: urlFFI.1, body_pointer: body_ptr, body_size: 0, dest_pointer: dest_ptr, dest_max_size: maxSize, ident: CURRENT_IDENT)
+
+        if resultSize < 0 {
+            retVal = "failed to fetch from url \(url)"
+            break
+        } else if resultSize > maxSize {
+            maxSize = resultSize
+        } else {
+            retVal = fromFFI(ptr: dest_ptr, size: resultSize)
+            break
+        }
+    }
+    
+    return retVal
 }
 
 public func CacheSet(key: String, value: String, ttl: Int) {    
