@@ -1,6 +1,7 @@
 package wasm
 
 import (
+	"encoding/json"
 	"fmt"
 	"testing"
 
@@ -59,15 +60,26 @@ func TestWasmRunnerWithLog(t *testing.T) {
 	}
 }
 
+type testBody struct {
+	Username string `json:"username"`
+}
+
 func TestSwiftPackage(t *testing.T) {
 	h := hive.New()
 
 	doWasm := h.Handle("wasm", NewRunner("./testdata/swift-echo/swift-echo.wasm"))
 
+	body := testBody{
+		Username: "cohix",
+	}
+
+	bodyJSON, _ := json.Marshal(body)
+
 	req := &request.CoordinatedRequest{
 		Method: "GET",
 		URL:    "/hello/world",
 		ID:     uuid.New().String(),
+		Body:   bodyJSON,
 		State: map[string][]byte{
 			"hello": []byte("what is up"),
 		},

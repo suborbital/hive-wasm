@@ -2,6 +2,7 @@ package request
 
 import (
 	"encoding/json"
+	"fmt"
 	"io/ioutil"
 	"net/http"
 
@@ -67,6 +68,9 @@ func (c *CoordinatedRequest) BodyField(key string) (string, error) {
 		if err := json.Unmarshal(c.Body, &vals); err != nil {
 			return "", errors.Wrap(err, "failed to Unmarshal request body")
 		}
+
+		// cache the parsed body
+		c.bodyValues = vals
 	}
 
 	interfaceVal, ok := c.bodyValues[key]
@@ -76,7 +80,7 @@ func (c *CoordinatedRequest) BodyField(key string) (string, error) {
 
 	stringVal, ok := interfaceVal.(string)
 	if !ok {
-		return "", errors.New("request body value is not a string")
+		return "", fmt.Errorf("request body value %s is not a string", key)
 	}
 
 	return stringVal, nil
