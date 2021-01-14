@@ -402,7 +402,7 @@ func TestWasmLargeDataGroup(t *testing.T) {
 	doWasm := h.Handle("wasm", NewRunner("./testdata/hello-echo/hello-echo.wasm"))
 
 	grp := hive.NewGroup()
-	for i := 0; i < 50000; i++ {
+	for i := 0; i < 5000; i++ {
 		grp.Add(doWasm([]byte(largeInput)))
 	}
 
@@ -414,10 +414,10 @@ func TestWasmLargeDataGroup(t *testing.T) {
 func TestWasmLargeDataGroupWithPool(t *testing.T) {
 	h := hive.New()
 
-	doWasm := h.Handle("wasm", NewRunner("./testdata/hello-echo/hello-echo.wasm"), hive.PoolSize(20))
+	doWasm := h.Handle("wasm", NewRunner("./testdata/hello-echo/hello-echo.wasm"), hive.PoolSize(5))
 
 	grp := hive.NewGroup()
-	for i := 0; i < 50000; i++ {
+	for i := 0; i < 5000; i++ {
 		grp.Add(doWasm([]byte(largeInput)))
 	}
 
