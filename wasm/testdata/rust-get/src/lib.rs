@@ -5,7 +5,7 @@ struct RustGet{}
 
 impl runnable::Runnable for RustGet {
     fn run(&self, _: Vec<u8>) -> Option<Vec<u8>> {
-        let cache_val = cache::get("important").unwrap();
+        let cache_val = cache::get("name").unwrap_or_default();
     
         Some(cache_val)
     }
