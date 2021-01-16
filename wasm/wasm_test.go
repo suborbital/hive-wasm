@@ -9,6 +9,7 @@ import (
 	"github.com/pkg/errors"
 	"github.com/suborbital/hive-wasm/request"
 	"github.com/suborbital/hive/hive"
+	"github.com/suborbital/vektor/vlog"
 )
 
 type testBody struct {
@@ -475,9 +476,9 @@ func TestWasmCacheGetSetSwiftToRust(t *testing.T) {
 func init() {
 	// uncomment to see debug log lines when running tests
 
-	// logger := vlog.Default(
-	// 	vlog.Level(vlog.LogLevelDebug),
-	// )
+	logger := vlog.Default(
+		vlog.Level(vlog.LogLevelDebug),
+	)
 
-	// UseLogger(logger)
+	UseLogger(logger)
 }

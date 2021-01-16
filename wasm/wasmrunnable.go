@@ -56,8 +56,6 @@ func (w *Runner) Run(job hive.Job, ctx *hive.Ctx) (interface{}, error) {
 	// check if the job is a CoordinatedRequest, and set up the WasmInstance if so
 	req, err := request.FromJSON(job.Bytes())
 	if err != nil {
-		logger.Debug("job is not a coordinated request:", err.Error())
-
 		// if it's not a request, treat it as normal data
 		bytes, bytesErr := interfaceToBytes(job.Data())
 		if bytesErr != nil {
