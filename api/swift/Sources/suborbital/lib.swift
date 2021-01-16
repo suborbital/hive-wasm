@@ -48,57 +48,55 @@ func fetch(method: Int32, url: String) -> String {
     var maxSize: Int32 = 256000
     var retVal = ""
 
-    let urlFFI = toFFI(val: url)
-
     // loop until the returned size is within the defined max size, increasing it as needed
-    while true {
-        let dest_ptr = allocate(size: Int32(maxSize))
-        let body_ptr = allocate(size: Int32(0))
+    while retVal == "" {
+        toFFI(val: url, use: { (ptr: UnsafePointer<Int8>, size: Int32) in
+            let dest_ptr = allocate(size: Int32(maxSize))
+            let body_ptr = allocate(size: Int32(0))
 
-        let resultSize = fetch_url(method: method, url_pointer: urlFFI.0, url_size: urlFFI.1, body_pointer: body_ptr, body_size: 0, dest_pointer: dest_ptr, dest_max_size: maxSize, ident: CURRENT_IDENT)
+            let resultSize = fetch_url(method: method, url_pointer: ptr, url_size: size, body_pointer: body_ptr, body_size: 0, dest_pointer: dest_ptr, dest_max_size: maxSize, ident: CURRENT_IDENT)
 
-        if resultSize < 0 {
-            retVal = "failed to fetch from url \(url)"
-            break
-        } else if resultSize > maxSize {
-            maxSize = resultSize
-        } else {
-            retVal = fromFFI(ptr: dest_ptr, size: resultSize)
-            break
-        }
+            if resultSize < 0 {
+                retVal = "failed to fetch from url \(url)"
+            } else if resultSize > maxSize {
+                maxSize = resultSize
+            } else {
+                retVal = fromFFI(ptr: dest_ptr, size: resultSize)
+            }
+        })
     }
     
     return retVal
 }
 
 public func CacheSet(key: String, value: String, ttl: Int) {    
-    let keyFFI = toFFI(val: key)
-    let valFFI = toFFI(val: value)
 
-    let _ = cache_set(key_pointer: keyFFI.0, key_size: keyFFI.1, value_pointer: valFFI.0, value_size: valFFI.1, ttl: Int32(ttl), ident: CURRENT_IDENT)
+    toFFI(val: key, use: { (keyPtr: UnsafePointer<Int8>, keySize: Int32) in
+        toFFI(val: value, use: { (valPtr: UnsafePointer<Int8>, valSize: Int32) in
+            let _ = cache_set(key_pointer: keyPtr, key_size: keySize, value_pointer: valPtr, value_size: valSize, ttl: Int32(ttl), ident: CURRENT_IDENT)
+        })
+    })
 }
 
 public func CacheGet(key: String) -> String {    
     var maxSize: Int32 = 256000
     var retVal = ""
 
-    let keyFFI = toFFI(val: key)
-
     // loop until the returned size is within the defined max size, increasing it as needed
-    while true {
-        let ptr = allocate(size: Int32(maxSize))
+    while retVal == "" {
+        toFFI(val: key, use: { (keyPtr: UnsafePointer<Int8>, keySize: Int32) in
+            let ptr = allocate(size: Int32(maxSize))
 
-        let resultSize = cache_get(key_pointer: keyFFI.0, key_size: keyFFI.1, dest_pointer: ptr, dest_max_size: maxSize, ident: CURRENT_IDENT)
+            let resultSize = cache_get(key_pointer: keyPtr, key_size: keySize, dest_pointer: ptr, dest_max_size: maxSize, ident: CURRENT_IDENT)
 
-        if resultSize < 0 {
-            retVal = "failed to get from cache"
-            break
-        } else if resultSize > maxSize {
-            maxSize = resultSize
-        } else {
-            retVal = fromFFI(ptr: ptr, size: resultSize)
-            break
-        }
+            if resultSize < 0 {
+                retVal = "failed to get from cache"
+            } else if resultSize > maxSize {
+                maxSize = resultSize
+            } else {
+                retVal = fromFFI(ptr: ptr, size: resultSize)
+            }
+        })
     }
     
     return retVal
@@ -117,9 +115,9 @@ public func LogErr(msg: String) {
 }
 
 func log(msg: String, level: Int32) {
-    let msgFFI = toFFI(val: msg)
-
-    log_msg(pointer: msgFFI.0, size: msgFFI.1, level: level, ident: CURRENT_IDENT)
+    toFFI(val: msg, use: { (ptr: UnsafePointer<Int8>, size: Int32) in
+        log_msg(pointer: ptr, size: size, level: level, ident: CURRENT_IDENT)
+    })
 }
 
 let fieldTypeMeta = Int32(0)
@@ -164,23 +162,21 @@ func requestGetField(fieldType: Int32, key: String) -> String {
     var maxSize: Int32 = 1024
     var retVal = ""
 
-    let keyFFI = toFFI(val: key)
-
     // loop until the returned size is within the defined max size, increasing it as needed
-    while true {
-        let ptr = allocate(size: Int32(maxSize))
+    while retVal == "" {
+        toFFI(val: key, use: { (ptr: UnsafePointer<Int8>, size: Int32) in
+            let ptr = allocate(size: Int32(maxSize))
 
-        let resultSize = request_get_field(field_type: fieldType, key_pointer: keyFFI.0, key_size: keyFFI.1, dest_pointer: ptr, dest_max_size: maxSize, ident: CURRENT_IDENT)
+            let resultSize = request_get_field(field_type: fieldType, key_pointer: ptr, key_size: size, dest_pointer: ptr, dest_max_size: maxSize, ident: CURRENT_IDENT)
 
-        if resultSize < 0 {
-            retVal = "failed to get request field"
-            break
-        } else if resultSize > maxSize {
-            maxSize = resultSize
-        } else {
-            retVal = fromFFI(ptr: ptr, size: resultSize)
-            break
-        }
+            if resultSize < 0 {
+                retVal = "failed to get request field"
+            } else if resultSize > maxSize {
+                maxSize = resultSize
+            } else {
+                retVal = fromFFI(ptr: ptr, size: resultSize)
+            }
+        })
     }
     
     return retVal
@@ -196,9 +192,9 @@ func run_e(pointer: UnsafeRawPointer, size: Int32, ident: Int32) {
     let retString = RUNNABLE.run(input: inString)
 
     // convert the output to a usable pointer/size combo
-    let retVal = toFFI(val: retString)
-
-    return_result(result_pointer: retVal.0, result_size: retVal.1, ident: ident)
+    toFFI(val: retString, use: { (ptr: UnsafePointer<Int8>, size: Int32) in
+        return_result(result_pointer: ptr, result_size: size, ident: ident)
+    })
 }
 
 @_cdecl("allocate")
@@ -212,19 +208,15 @@ func deallocate(pointer: UnsafeRawPointer, size: Int32) {
     ptr.deallocate()
 }
 
-func toFFI(val: String) -> (UnsafePointer<Int8>, Int32) {
+func toFFI(val: String, use: (UnsafePointer<Int8>, Int32) -> Void) {
     // create a nil (optional) pointer
-    var ptr: UnsafePointer<Int8>? = UnsafePointer<Int8>(bitPattern: 0)
     let size = Int32(val.utf8.count)
 
     // grab the pointer in a closure and give the optional a real value
     let _ = val.withCString({ (valPtr) -> UInt in
-        ptr = valPtr
+        use(valPtr, size)
         return 0
     })
-
-    // unwrap the optional before returning
-    return (ptr!, size)
 }
 
 func fromFFI(ptr: UnsafeRawPointer, size: Int32) -> String {

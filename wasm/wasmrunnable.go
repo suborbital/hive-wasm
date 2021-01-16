@@ -102,7 +102,7 @@ func (w *Runner) Run(job hive.Job, ctx *hive.Ctx) (interface{}, error) {
 	}
 
 	if runErr != nil {
-		return nil, errors.Wrap(err, "failed to execute Wasm Runnable")
+		return nil, errors.Wrap(runErr, "failed to execute Wasm Runnable")
 	}
 
 	return output, nil

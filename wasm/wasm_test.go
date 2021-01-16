@@ -432,7 +432,7 @@ func TestWasmCacheGetSetRustToSwift(t *testing.T) {
 	doSet := h.Handle("set", NewRunner("./testdata/rust-set/rust-set.wasm"))
 	doGet := h.Handle("get", NewRunner("./testdata/swift-get/swift-get.wasm"))
 
-	_, err := doSet("important info").Then()
+	_, err := doSet("very important").Then()
 	if err != nil {
 		t.Error(errors.Wrap(err, "failed to set cache value"))
 		return
@@ -444,7 +444,7 @@ func TestWasmCacheGetSetRustToSwift(t *testing.T) {
 		return
 	}
 
-	if string(r2.([]byte)) != "important info" {
+	if string(r2.([]byte)) != "very important" {
 		t.Error(fmt.Errorf("did not get expected output"))
 	}
 }
@@ -455,7 +455,7 @@ func TestWasmCacheGetSetSwiftToRust(t *testing.T) {
 	doSet := h.Handle("set", NewRunner("./testdata/swift-set/swift-set.wasm"))
 	doGet := h.Handle("get", NewRunner("./testdata/rust-get/rust-get.wasm"))
 
-	_, err := doSet("important info").Then()
+	_, err := doSet("jonathan").Then()
 	if err != nil {
 		t.Error(errors.Wrap(err, "failed to set cache value"))
 		return
@@ -467,7 +467,17 @@ func TestWasmCacheGetSetSwiftToRust(t *testing.T) {
 		return
 	}
 
-	if string(r2.([]byte)) != "important info" {
+	if string(r2.([]byte)) != "jonathan" {
 		t.Error(fmt.Errorf("did not get expected output"))
 	}
+}
+
+func init() {
+	// uncomment to see debug log lines when running tests
+
+	// logger := vlog.Default(
+	// 	vlog.Level(vlog.LogLevelDebug),
+	// )
+
+	// UseLogger(logger)
 }
