@@ -164,17 +164,17 @@ func requestGetField(fieldType: Int32, key: String) -> String {
 
     // loop until the returned size is within the defined max size, increasing it as needed
     while retVal == "" {
-        toFFI(val: key, use: { (ptr: UnsafePointer<Int8>, size: Int32) in
-            let ptr = allocate(size: Int32(maxSize))
+        toFFI(val: key, use: { (keyPtr: UnsafePointer<Int8>, keySize: Int32) in
+            let resultPtr = allocate(size: Int32(maxSize))
 
-            let resultSize = request_get_field(field_type: fieldType, key_pointer: ptr, key_size: size, dest_pointer: ptr, dest_max_size: maxSize, ident: CURRENT_IDENT)
-
+            let resultSize = request_get_field(field_type: fieldType, key_pointer: keyPtr, key_size: keySize, dest_pointer: resultPtr, dest_max_size: maxSize, ident: CURRENT_IDENT)
+            
             if resultSize < 0 {
                 retVal = "failed to get request field"
             } else if resultSize > maxSize {
                 maxSize = resultSize
             } else {
-                retVal = fromFFI(ptr: ptr, size: resultSize)
+                retVal = fromFFI(ptr: resultPtr, size: resultSize)
             }
         })
     }

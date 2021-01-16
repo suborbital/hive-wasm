@@ -546,6 +546,8 @@ func request_get_field(context unsafe.Pointer, fieldType int32, keyPointer int32
 			val = req.ID
 		case "body":
 			val = string(req.Body)
+		default:
+			return -3
 		}
 	case fieldTypeBody:
 		bodyVal, err := req.BodyField(key)
