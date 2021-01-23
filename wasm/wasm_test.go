@@ -36,7 +36,7 @@ func init() {
 func TestWasmRunnerWithFetch(t *testing.T) {
 	h := hive.New()
 
-	// test a WASM module that was directly compiled from the hivew-rs-builder repo
+	// test a WASM module that is loaded directly instead of through the bundle
 	doWasm := h.Handle("wasm", NewRunner("./testdata/fetch/fetch.wasm"))
 
 	res, err := doWasm("https://1password.com").Then()
@@ -51,12 +51,9 @@ func TestWasmRunnerWithFetch(t *testing.T) {
 }
 
 func TestWasmRunnerWithFetchSwift(t *testing.T) {
-	h := hive.New()
+	job := hive.NewJob("fetch-swift", "https://1password.com")
 
-	// test a WASM module that was directly compiled from the hivew-rs-builder repo
-	doWasm := h.Handle("wasm", NewRunner("./testdata/fetch-swift/fetch-swift.wasm"))
-
-	res, err := doWasm("https://1password.com").Then()
+	res, err := sharedH.Do(job).Then()
 	if err != nil {
 		t.Error(errors.Wrap(err, "failed to Then"))
 		return
@@ -106,10 +103,6 @@ func TestWasmRunnerWithRequest(t *testing.T) {
 }
 
 func TestWasmRunnerSwift(t *testing.T) {
-	h := hive.New()
-
-	doWasm := h.Handle("wasm", NewRunner("./testdata/swift-echo/swift-echo.wasm"))
-
 	body := testBody{
 		Username: "cohix",
 	}
@@ -131,7 +124,9 @@ func TestWasmRunnerSwift(t *testing.T) {
 		t.Error("failed to ToJSON", err)
 	}
 
-	res, err := doWasm(reqJSON).Then()
+	job := hive.NewJob("swift-echo", reqJSON)
+
+	res, err := sharedH.Do(job).Then()
 	if err != nil {
 		t.Error(errors.Wrap(err, "failed to Then"))
 		return
