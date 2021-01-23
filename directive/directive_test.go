@@ -7,8 +7,9 @@ import (
 
 func TestYAMLMarshalUnmarshal(t *testing.T) {
 	dir := Directive{
-		Identifier: "dev.suborbital.appname",
-		Version:    "v0.1.1",
+		Identifier:  "dev.suborbital.appname",
+		AppVersion:  "v0.1.1",
+		AtmoVersion: "v0.0.6",
 		Runnables: []Runnable{
 			{
 				Name:      "getUser",
@@ -80,8 +81,9 @@ func TestYAMLMarshalUnmarshal(t *testing.T) {
 
 func TestDirectiveValidatorGroupLast(t *testing.T) {
 	dir := Directive{
-		Identifier: "dev.suborbital.appname",
-		Version:    "v0.1.1",
+		Identifier:  "dev.suborbital.appname",
+		AppVersion:  "v0.1.1",
+		AtmoVersion: "v0.0.6",
 		Runnables: []Runnable{
 			{
 				Name:      "getUser",
@@ -133,8 +135,9 @@ func TestDirectiveValidatorGroupLast(t *testing.T) {
 
 func TestDirectiveValidatorMissingFns(t *testing.T) {
 	dir := Directive{
-		Identifier: "dev.suborbital.appname",
-		Version:    "v0.1.1",
+		Identifier:  "dev.suborbital.appname",
+		AppVersion:  "v0.1.1",
+		AtmoVersion: "v0.0.6",
 		Runnables: []Runnable{
 			{
 				Name:      "getUser",
@@ -181,8 +184,9 @@ func TestDirectiveValidatorMissingFns(t *testing.T) {
 
 func TestDirectiveFQFNs(t *testing.T) {
 	dir := Directive{
-		Identifier: "dev.suborbital.appname",
-		Version:    "v0.1.1",
+		Identifier:  "dev.suborbital.appname",
+		AppVersion:  "v0.1.1",
+		AtmoVersion: "v0.0.6",
 		Runnables: []Runnable{
 			{
 				Name:      "getUser",
@@ -234,8 +238,9 @@ func TestDirectiveFQFNs(t *testing.T) {
 
 func TestDirectiveValidatorWithMissingState(t *testing.T) {
 	dir := Directive{
-		Identifier: "dev.suborbital.appname",
-		Version:    "v0.1.1",
+		Identifier:  "dev.suborbital.appname",
+		AppVersion:  "v0.1.1",
+		AtmoVersion: "v0.0.6",
 		Runnables: []Runnable{
 			{
 				Name:      "getUser",

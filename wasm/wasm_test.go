@@ -16,10 +16,27 @@ type testBody struct {
 	Username string `json:"username"`
 }
 
+var sharedH *hive.Hive
+
+func init() {
+	// set a logger for hive-wasm to use
+	UseLogger(vlog.Default(
+		vlog.Level(vlog.LogLevelDebug),
+	))
+
+	// create a shared instance for some tests to use
+	sharedH = hive.New()
+
+	if err := HandleBundleAtPath(sharedH, "./testdata/runnables.wasm.zip"); err != nil {
+		fmt.Println(errors.Wrap(err, "failed to AtHandleBundleAtPath"))
+		return
+	}
+}
+
 func TestWasmRunnerWithFetch(t *testing.T) {
 	h := hive.New()
 
-	// test a WASM module that was directly compiled from the hivew-rs-builder repo
+	// test a WASM module that is loaded directly instead of through the bundle
 	doWasm := h.Handle("wasm", NewRunner("./testdata/fetch/fetch.wasm"))
 
 	res, err := doWasm("https://1password.com").Then()
@@ -34,12 +51,9 @@ func TestWasmRunnerWithFetch(t *testing.T) {
 }
 
 func TestWasmRunnerWithFetchSwift(t *testing.T) {
-	h := hive.New()
+	job := hive.NewJob("fetch-swift", "https://1password.com")
 
-	// test a WASM module that was directly compiled from the hivew-rs-builder repo
-	doWasm := h.Handle("wasm", NewRunner("./testdata/fetch-swift/fetch-swift.wasm"))
-
-	res, err := doWasm("https://1password.com").Then()
+	res, err := sharedH.Do(job).Then()
 	if err != nil {
 		t.Error(errors.Wrap(err, "failed to Then"))
 		return
@@ -89,10 +103,6 @@ func TestWasmRunnerWithRequest(t *testing.T) {
 }
 
 func TestWasmRunnerSwift(t *testing.T) {
-	h := hive.New()
-
-	doWasm := h.Handle("wasm", NewRunner("./testdata/swift-echo/swift-echo.wasm"))
-
 	body := testBody{
 		Username: "cohix",
 	}
@@ -114,7 +124,9 @@ func TestWasmRunnerSwift(t *testing.T) {
 		t.Error("failed to ToJSON", err)
 	}
 
-	res, err := doWasm(reqJSON).Then()
+	job := hive.NewJob("swift-echo", reqJSON)
+
+	res, err := sharedH.Do(job).Then()
 	if err != nil {
 		t.Error(errors.Wrap(err, "failed to Then"))
 		return
@@ -156,14 +168,7 @@ func TestWasmRunnerGroup(t *testing.T) {
 }
 
 func TestWasmBundle(t *testing.T) {
-	h := hive.New()
-
-	if err := HandleBundleAtPath(h, "./testdata/runnables.wasm.zip"); err != nil {
-		t.Error(errors.Wrap(err, "failed to AtHandleBundleAtPath"))
-		return
-	}
-
-	res, err := h.Do(hive.NewJob("hello-echo", []byte("wasmWorker!"))).Then()
+	res, err := sharedH.Do(hive.NewJob("hello-echo", []byte("wasmWorker!"))).Then()
 	if err != nil {
 		t.Error(errors.Wrap(err, "Then returned error"))
 		return
@@ -428,18 +433,16 @@ func TestWasmLargeDataGroupWithPool(t *testing.T) {
 }
 
 func TestWasmCacheGetSetRustToSwift(t *testing.T) {
-	h := hive.New()
+	setJob := hive.NewJob("rust-set", "very important")
+	getJob := hive.NewJob("swift-get", "")
 
-	doSet := h.Handle("set", NewRunner("./testdata/rust-set/rust-set.wasm"))
-	doGet := h.Handle("get", NewRunner("./testdata/swift-get/swift-get.wasm"))
-
-	_, err := doSet("very important").Then()
+	_, err := sharedH.Do(setJob).Then()
 	if err != nil {
 		t.Error(errors.Wrap(err, "failed to set cache value"))
 		return
 	}
 
-	r2, err := doGet("").Then()
+	r2, err := sharedH.Do(getJob).Then()
 	if err != nil {
 		t.Error(errors.Wrap(err, "failed to get cache value"))
 		return
@@ -451,34 +454,22 @@ func TestWasmCacheGetSetRustToSwift(t *testing.T) {
 }
 
 func TestWasmCacheGetSetSwiftToRust(t *testing.T) {
-	h := hive.New()
+	setJob := hive.NewJob("swift-set", "very important")
+	getJob := hive.NewJob("rust-get", "")
 
-	doSet := h.Handle("set", NewRunner("./testdata/swift-set/swift-set.wasm"))
-	doGet := h.Handle("get", NewRunner("./testdata/rust-get/rust-get.wasm"))
-
-	_, err := doSet("jonathan").Then()
+	_, err := sharedH.Do(setJob).Then()
 	if err != nil {
 		t.Error(errors.Wrap(err, "failed to set cache value"))
 		return
 	}
 
-	r2, err := doGet("").Then()
+	r2, err := sharedH.Do(getJob).Then()
 	if err != nil {
 		t.Error(errors.Wrap(err, "failed to get cache value"))
 		return
 	}
 
-	if string(r2.([]byte)) != "jonathan" {
+	if string(r2.([]byte)) != "very important" {
 		t.Error(fmt.Errorf("did not get expected output"))
 	}
-}
-
-func init() {
-	// uncomment to see debug log lines when running tests
-
-	logger := vlog.Default(
-		vlog.Level(vlog.LogLevelDebug),
-	)
-
-	UseLogger(logger)
 }
