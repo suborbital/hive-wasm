@@ -24,8 +24,9 @@ func main() {
 	}
 
 	directive := &directive.Directive{
-		Identifier: "dev.suborbital.appname",
-		Version:    "v0.1.1",
+		Identifier:  "dev.suborbital.appname",
+		AppVersion:  "v0.1.1",
+		AtmoVersion: "v0.0.6",
 		Runnables: []directive.Runnable{
 			{
 				Name:      "fetch",
