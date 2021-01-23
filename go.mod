@@ -6,7 +6,7 @@ require (
 	github.com/google/uuid v1.1.3
 	github.com/kr/pretty v0.1.0 // indirect
 	github.com/pkg/errors v0.9.1
-	github.com/suborbital/hive v0.1.6-0.20210104143945-1008b3cf22e6
+	github.com/suborbital/hive v0.2.1
 	github.com/suborbital/vektor v0.2.2
 	github.com/wasmerio/wasmer-go v0.3.2-0.20200903143934-299b1d478cde
 	golang.org/x/mod v0.3.0

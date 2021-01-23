@@ -35,6 +35,8 @@ github.com/suborbital/grav v0.3.0 h1:dxe3YCKIblSlZ0Pl+uy0qW/xtXrmRD2gQNLSY4ErgvY
 github.com/suborbital/grav v0.3.0/go.mod h1:PapJ62PtT9dPmW37WaCD+UMhoZiNPp0N9E3nUfEujC4=
 github.com/suborbital/hive v0.1.6-0.20210104143945-1008b3cf22e6 h1:t+mBW8uVajiU8W6eZTexf1c3cCVRzW9b1voCboX7XhM=
 github.com/suborbital/hive v0.1.6-0.20210104143945-1008b3cf22e6/go.mod h1:7EhT+wD3Wk31YeUwbw/3PvLTq4QF5emJYAu23sDeEo0=
+github.com/suborbital/hive v0.2.1 h1:/Rf2NSUNZITFF19x2LBhId9s4aboEV58wFseikDPEUw=
+github.com/suborbital/hive v0.2.1/go.mod h1:7EhT+wD3Wk31YeUwbw/3PvLTq4QF5emJYAu23sDeEo0=
 github.com/suborbital/vektor v0.2.2 h1:x3yit9RMXcP8LirkKb1f/psNev/G/iTIHo6eL/f1OBI=
 github.com/suborbital/vektor v0.2.2/go.mod h1:6YQE7r6t1JcVs3twpqjXDftsLUaTNUk5YorRKHcDamI=
 github.com/urfave/cli/v2 v2.1.1/go.mod h1:SE9GqnLQmjVa0iPEY0f1w3ygNIYcIJ0OKPMoW2caLfQ=
