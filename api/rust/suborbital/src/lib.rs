@@ -102,7 +102,7 @@ pub mod http {
         let mut dest_size: i32;
         let mut capacity: i32 = 256000;
 
-        // make the request, and if the response size is greater than that of capacity, double the capacity and try again
+        // make the request, and if the response size is greater than that of capacity, increase the capacity and try again
         loop {
             let cap = &mut capacity;
 
@@ -153,7 +153,7 @@ pub mod cache {
         let mut result_size: i32;
         let mut capacity: i32 = 1024;
 
-        // make the request, and if the response size is greater than that of capacity, double the capacity and try again
+        // make the request, and if the response size is greater than that of capacity, increase the capacity and try again
         loop {
             let cap = &mut capacity;
 
@@ -257,7 +257,7 @@ pub mod req {
         let mut result_size: i32;
         let mut capacity: i32 = 1024;
 
-        // make the request, and if the response size is greater than that of capacity, double the capacity and try again
+        // make the request, and if the response size is greater than that of capacity, increase the capacity and try again
         loop {
             let cap = &mut capacity;
 

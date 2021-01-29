@@ -533,7 +533,9 @@ func request_get_field(context unsafe.Pointer, fieldType int32, keyPointer int32
 	keyBytes := inst.readMemory(keyPointer, keySize)
 	key := string(keyBytes)
 
-	var val string
+	logger.Debug(fmt.Sprintf("getting request field type %d, key %s, max size %d, req ID %s", fieldType, key, destMaxSize, req.ID))
+
+	val := ""
 
 	switch fieldType {
 	case fieldTypeMeta:
@@ -586,6 +588,7 @@ func request_get_field(context unsafe.Pointer, fieldType int32, keyPointer int32
 		inst.writeMemoryAtLocation(destPointer, valBytes)
 	}
 
+	// logger.Debug(fmt.Sprintf("returning value length %d", len(valBytes)))
 	return int32(len(valBytes))
 }
 
