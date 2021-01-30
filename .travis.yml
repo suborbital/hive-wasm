@@ -1,0 +1,10 @@
+language: go
+
+os: 
+  - osx
+  # - linux
+
+go:
+- "1.15.x"
+
+script: make test

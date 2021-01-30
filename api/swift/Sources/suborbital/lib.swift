@@ -49,19 +49,24 @@ func fetch(method: Int32, url: String) -> String {
     var retVal = ""
 
     // loop until the returned size is within the defined max size, increasing it as needed
-    while retVal == "" {
+    var done = false
+    while !done {
         toFFI(val: url, use: { (ptr: UnsafePointer<Int8>, size: Int32) in
             let dest_ptr = allocate(size: Int32(maxSize))
             let body_ptr = allocate(size: Int32(0))
 
             let resultSize = fetch_url(method: method, url_pointer: ptr, url_size: size, body_pointer: body_ptr, body_size: 0, dest_pointer: dest_ptr, dest_max_size: maxSize, ident: CURRENT_IDENT)
 
-            if resultSize < 0 {
+            if resultSize == 0 {
+                done = true
+            } else if resultSize < 0 {
                 retVal = "failed to fetch from url \(url)"
+                done = true
             } else if resultSize > maxSize {
                 maxSize = resultSize
             } else {
                 retVal = fromFFI(ptr: dest_ptr, size: resultSize)
+                done = true
             }
         })
     }
@@ -83,18 +88,23 @@ public func CacheGet(key: String) -> String {
     var retVal = ""
 
     // loop until the returned size is within the defined max size, increasing it as needed
-    while retVal == "" {
+    var done = false
+    while !done {
         toFFI(val: key, use: { (keyPtr: UnsafePointer<Int8>, keySize: Int32) in
             let ptr = allocate(size: Int32(maxSize))
 
             let resultSize = cache_get(key_pointer: keyPtr, key_size: keySize, dest_pointer: ptr, dest_max_size: maxSize, ident: CURRENT_IDENT)
 
-            if resultSize < 0 {
+            if resultSize == 0 {
+                done = true
+            } else if resultSize < 0 {
                 retVal = "failed to get from cache"
+                done = true
             } else if resultSize > maxSize {
                 maxSize = resultSize
             } else {
                 retVal = fromFFI(ptr: ptr, size: resultSize)
+                done = true
             }
         })
     }
@@ -163,18 +173,23 @@ func requestGetField(fieldType: Int32, key: String) -> String {
     var retVal = ""
 
     // loop until the returned size is within the defined max size, increasing it as needed
-    while retVal == "" {
+    var done = false
+    while !done {
         toFFI(val: key, use: { (keyPtr: UnsafePointer<Int8>, keySize: Int32) in
             let resultPtr = allocate(size: Int32(maxSize))
 
             let resultSize = request_get_field(field_type: fieldType, key_pointer: keyPtr, key_size: keySize, dest_pointer: resultPtr, dest_max_size: maxSize, ident: CURRENT_IDENT)
             
-            if resultSize < 0 {
+            if resultSize == 0 {
+                done = true
+            } else if resultSize < 0 {
                 retVal = "failed to get request field"
+                done = true
             } else if resultSize > maxSize {
                 maxSize = resultSize
             } else {
                 retVal = fromFFI(ptr: resultPtr, size: resultSize)
+                done = true
             }
         })
     }
