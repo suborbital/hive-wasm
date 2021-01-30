@@ -1,5 +1,7 @@
 language: go
 
+os: osx
+
 go:
 - "1.15.x"
 
