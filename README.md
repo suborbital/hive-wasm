@@ -1,5 +1,7 @@
 # Hive ❤️ WASM
 
+[![Build Status](https://travis-ci.com/suborbital/hive-wasm.svg?branch=master)](https://travis-ci.com/suborbital/hive-wasm)
+
 `hive-wasm` is the WASM API for [Hive](https://github.com/suborbital/hive).
 
 These packages are mostly used by Hive internally to run Wasm modules, and include the Hive Wasm FFI API, as well as the Runnable implementation for Wasm modules. 
