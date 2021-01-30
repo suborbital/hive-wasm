@@ -4,6 +4,8 @@ os:
   - osx
   - linux
 
+virt: vm
+
 go:
 - "1.15.x"
 
