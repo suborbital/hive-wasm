@@ -12,6 +12,3 @@ homepage = "https://suborbital.dev"
 crate-type = ["cdylib", "rlib"]
 
 [dependencies]
-serde = { version = "1", features = ["derive"] }
-serde_json = { version = "1", default-features = false, features = ["alloc"]}
-simple-error = "0.1.9"
