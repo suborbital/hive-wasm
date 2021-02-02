@@ -5,7 +5,7 @@
  * 
  */
 
- // a small wrapper to hold our dynamic Runnable
+// a small wrapper to hold our dynamic Runnable
 struct State <'a> {
     ident: i32,
     runnable: &'a dyn runnable::Runnable
@@ -89,34 +89,74 @@ pub mod runnable {
 }
 
 pub mod http {
-    use std::slice;
+    use std::collections::BTreeMap;
+	use std::slice;
 
     static METHOD_GET: i32 = 1;
+    static METHOD_POST: i32 = 2;
+    static METHOD_PATCH: i32 = 3;
+    static METHOD_DELETE: i32 = 4;
 
     extern {
         fn fetch_url(method: i32, url_pointer: *const u8, url_size: i32, body_pointer: *const u8, body_size: i32, dest_pointer: *const u8, dest_max_size: i32, ident: i32) -> i32;
     }
 
-    pub fn get(url: &str) -> Vec<u8> {
+    pub fn get(url: &str, headers: Option<BTreeMap<&str, &str>>) -> Vec<u8> {
+		return do_request(METHOD_GET, url, None, headers);
+	}
+    
+    pub fn post(url: &str, body: Option<Vec<u8>>, headers: Option<BTreeMap<&str, &str>>) -> Vec<u8> {
+		return do_request(METHOD_POST, url, body, headers);
+	}
+    
+    pub fn patch(url: &str, body: Option<Vec<u8>>, headers: Option<BTreeMap<&str, &str>>) -> Vec<u8> {
+		return do_request(METHOD_PATCH, url, body, headers);
+	}
+    
+    pub fn delete(url: &str, headers: Option<BTreeMap<&str, &str>>) -> Vec<u8> {
+		return do_request(METHOD_DELETE, url, None, headers);
+	}
+
+	fn do_request(method: i32, url: &str, body: Option<Vec<u8>>, headers: Option<BTreeMap<&str, &str>>) -> Vec<u8> {
+        // the URL gets encoded with headers added on the end, seperated by ::
+	    // eg. https://google.com/somepage::authorization:bearer qdouwrnvgoquwnrg::anotherheader:nicetomeetyou
+        let header_string = render_header_string(headers);
+        
+        let url_string = match header_string {
+            Some(h) => format!("{}::{}", url, h),
+            None => String::from(url)
+        };
+        
         let mut dest_pointer: *const u8;
         let mut dest_size: i32;
         let mut capacity: i32 = 256000;
 
+        let body_pointer: *const u8;
+        let mut body_size: i32 = 0;
+
+        match body {
+            Some(b) => {
+                let body_slice = b.as_slice();
+                body_pointer = body_slice.as_ptr();
+                body_size = b.len() as i32;
+            },
+            None => body_pointer = 0 as *const u8
+        }
+        
         // make the request, and if the response size is greater than that of capacity, increase the capacity and try again
         loop {
             let cap = &mut capacity;
-
+            
             let mut dest_bytes = Vec::with_capacity(*cap as usize);
             let dest_slice = dest_bytes.as_mut_slice();
             dest_pointer = dest_slice.as_mut_ptr() as *const u8;
-    
+            
             // do the request over FFI
-            dest_size = unsafe { fetch_url(METHOD_GET, url.as_ptr(), url.len() as i32, 0 as *const u8, 0 as i32, dest_pointer, *cap, super::STATE.ident) };
+            dest_size = unsafe { fetch_url(method, url_string.as_str().as_ptr(), url_string.len() as i32, body_pointer, body_size, dest_pointer, *cap, super::STATE.ident) };
 
             if dest_size < 0 {
                 return Vec::from(format!("request_failed:{}", dest_size))
             } else if dest_size > *cap {
-                super::log::info(format!("increasing capacity, need {}", dest_size).as_str());
                 *cap = dest_size;
             } else {
                 break;
@@ -128,7 +168,31 @@ pub mod http {
         };
 
         return Vec::from(result)
-    }
+	}
+	
+	fn render_header_string(headers: Option<BTreeMap<&str, &str>>) -> Option<String> {
+        let mut rendered: String = String::from("");
+        
+        match headers {
+            Some(h) => {
+                for key in h.keys() {
+                    rendered.push_str(key);
+                    rendered.push_str(":");
+        
+                    let val: &str = match h.get(key) {
+                        Some(v) => v,
+                        None => "",
+                    };
+        
+                    rendered.push_str(val);
+                    rendered.push_str("::")
+                }
+            },
+            None => return None,
+        }
+
+		return Some(String::from(rendered.trim_end_matches("::")));
+	}
 }
 
 pub mod cache {
