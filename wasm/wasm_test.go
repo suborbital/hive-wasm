@@ -45,8 +45,12 @@ func TestWasmRunnerWithFetch(t *testing.T) {
 		return
 	}
 
+	if len(res.([]byte)) < 100 {
+		t.Errorf("expected 1password.com HTML, got %q", string(res.([]byte)))
+	}
+
 	if string(res.([]byte))[:100] != "<!doctype html><html lang=en data-language-url=/><head><meta charset=utf-8><meta name=viewport conte" {
-		t.Error(fmt.Errorf("expected 1password.com HTML, got %q", string(res.([]byte))[:100]))
+		t.Errorf("expected 1password.com HTML, got %q", string(res.([]byte))[:100])
 	}
 }
 

@@ -1,9 +1,9 @@
 [package]
 name = "suborbital"
-version = "0.4.4"
+version = "0.5.0"
 authors = ["cohix <connorjhicks@gmail.com>"]
 edition = "2018"
-description = "Suborbital Wasm FFI API"
+description = "Suborbital Wasm Runnable API"
 license = "Apache-2.0"
 repository = "https://github.com/suborbital/hive-wasm"
 homepage = "https://suborbital.dev"
