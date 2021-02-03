@@ -22,12 +22,13 @@ package wasm
 import "C"
 
 import (
+	"bytes"
 	"crypto/rand"
 	"math"
 	"math/big"
+	"strings"
 	"sync"
 
-	"fmt"
 	"io/ioutil"
 	"net/http"
 	"net/url"
@@ -335,7 +336,7 @@ func return_result(context unsafe.Pointer, pointer int32, size int32, identifier
 
 	inst, err := instanceForIdentifier(identifier)
 	if err != nil {
-		fmt.Println(errors.Wrap(err, "[hive-wasm] alert: invalid identifier used, potential malicious activity"))
+		logger.Error(errors.Wrap(err, "[hive-wasm] alert: invalid identifier used, potential malicious activity"))
 		return
 	}
 
@@ -369,43 +370,67 @@ func fetch_url(context unsafe.Pointer, method int32, urlPointer int32, urlSize i
 	// fetch writes the http response body into memory starting at returnBodyPointer, and the return value is a pointer to that memory
 	inst, err := instanceForIdentifier(identifier)
 	if err != nil {
-		fmt.Println(errors.Wrap(err, "[hive-wasm] alert: invalid identifier used, potential malicious activity"))
+		logger.Error(errors.Wrap(err, "[hive-wasm] alert: invalid identifier used, potential malicious activity"))
 		return -1
 	}
 
 	httpMethod, exists := methodValToMethod[method]
 	if !exists {
-		fmt.Println("invalid method provided")
+		logger.ErrorString("invalid method provided")
 		return -2
 	}
 
 	urlBytes := inst.readMemory(urlPointer, urlSize)
 
-	urlObj, err := url.Parse(string(urlBytes))
+	// the URL is encoded with headers added on the end, seperated by ::
+	// eg. https://google.com/somepage::authorization:bearer qdouwrnvgoquwnrg::anotherheader:nicetomeetyou
+	urlParts := strings.Split(string(urlBytes), "::")
+	urlString := urlParts[0]
+
+	headers := http.Header{}
+
+	if len(urlParts) > 1 {
+		for _, p := range urlParts[1:] {
+			headerParts := strings.Split(p, ":")
+			if len(headerParts) != 2 {
+				logger.ErrorString("could not parse URL headers")
+				return -2
+			}
+
+			headers.Add(headerParts[0], headerParts[1])
+		}
+	}
+
+	urlObj, err := url.Parse(urlString)
 	if err != nil {
-		fmt.Println("couldn't parse URL")
+		logger.ErrorString("couldn't parse URL")
 		return -2
 	}
 
-	req, err := http.NewRequest(httpMethod, urlObj.String(), nil)
+	body := inst.readMemory(bodyPointer, bodySize)
+
+	req, err := http.NewRequest(httpMethod, urlObj.String(), bytes.NewBuffer(body))
 	if err != nil {
-		fmt.Println("failed to build request")
+		logger.ErrorString("failed to build request")
 		return -2
 	}
+
+	req.Header = headers
 
 	resp, err := http.DefaultClient.Do(req)
 	if err != nil {
-		fmt.Println("failed to Do request")
+		logger.Error(errors.Wrap(err, "failed to Do request"))
 		return -3
 	}
 
 	defer resp.Body.Close()
 	respBytes, err := ioutil.ReadAll(resp.Body)
 	if err != nil {
-		fmt.Println("failed to Read response body")
+		logger.ErrorString("failed to Read response body")
 		return -4
 	}
 
+	// if the size is greater than what's been allocated, then the module will increase the size and try again
 	if len(respBytes) <= int(destMaxSize) {
 		inst.writeMemoryAtLocation(destPointer, respBytes)
 	}
@@ -422,7 +447,7 @@ func fetch_url_swift(context unsafe.Pointer, method int32, urlPointer int32, url
 func cache_set(context unsafe.Pointer, keyPointer int32, keySize int32, valPointer int32, valSize int32, ttl int32, identifier int32) int32 {
 	inst, err := instanceForIdentifier(identifier)
 	if err != nil {
-		fmt.Println(errors.Wrap(err, "[hive-wasm] alert: invalid identifier used, potential malicious activity"))
+		logger.Error(errors.Wrap(err, "[hive-wasm] alert: invalid identifier used, potential malicious activity"))
 		return -1
 	}
 
@@ -448,7 +473,7 @@ func cache_set_swift(context unsafe.Pointer, keyPointer int32, keySize int32, va
 func cache_get(context unsafe.Pointer, keyPointer int32, keySize int32, destPointer int32, destMaxSize int32, identifier int32) int32 {
 	inst, err := instanceForIdentifier(identifier)
 	if err != nil {
-		fmt.Println(errors.Wrap(err, "[hive-wasm] alert: invalid identifier used, potential malicious activity"))
+		logger.Error(errors.Wrap(err, "[hive-wasm] alert: invalid identifier used, potential malicious activity"))
 		return -1
 	}
 
@@ -532,8 +557,6 @@ func request_get_field(context unsafe.Pointer, fieldType int32, keyPointer int32
 
 	keyBytes := inst.readMemory(keyPointer, keySize)
 	key := string(keyBytes)
-
-	logger.Debug(fmt.Sprintf("getting request field type %d, key %s, max size %d, req ID %s", fieldType, key, destMaxSize, req.ID))
 
 	val := ""
 
