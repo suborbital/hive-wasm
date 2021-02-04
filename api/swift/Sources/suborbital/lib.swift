@@ -39,35 +39,51 @@ public func Set(runnable: Runnable) {
 }
 
 let httpMethodGet = Int32(1)
+let httpMethodPost = Int32(2)
+let httpMethodPatch = Int32(3)
+let httpMethodDelete = Int32(4)
 
 public func HttpGet(url: String) -> String {
-    return fetch(method: httpMethodGet, url: url)
+    return fetch(method: httpMethodGet, url: url, body: "")
 }
 
-func fetch(method: Int32, url: String) -> String {    
+public func HttpPost(url: String, body: String) -> String {
+    return fetch(method: httpMethodPost, url: url, body: body)
+}
+
+public func HttpPatch(url: String, body: String) -> String {
+    return fetch(method: httpMethodPatch, url: url, body: body)
+}
+
+public func HttpDelete(url: String) -> String {
+    return fetch(method: httpMethodDelete, url: url, body: "")
+}
+
+func fetch(method: Int32, url: String, body: String) -> String {    
     var maxSize: Int32 = 256000
     var retVal = ""
 
     // loop until the returned size is within the defined max size, increasing it as needed
     var done = false
     while !done {
-        toFFI(val: url, use: { (ptr: UnsafePointer<Int8>, size: Int32) in
-            let dest_ptr = allocate(size: Int32(maxSize))
-            let body_ptr = allocate(size: Int32(0))
+        toFFI(val: url, use: { (url_ptr: UnsafePointer<Int8>, url_size: Int32) in
+            toFFI(val: body, use: { (body_ptr: UnsafePointer<Int8>, body_size: Int32) in
+                let dest_ptr = allocate(size: Int32(maxSize))
 
-            let resultSize = fetch_url(method: method, url_pointer: ptr, url_size: size, body_pointer: body_ptr, body_size: 0, dest_pointer: dest_ptr, dest_max_size: maxSize, ident: CURRENT_IDENT)
+                let resultSize = fetch_url(method: method, url_pointer: url_ptr, url_size: url_size, body_pointer: body_ptr, body_size: body_size, dest_pointer: dest_ptr, dest_max_size: maxSize, ident: CURRENT_IDENT)
 
-            if resultSize == 0 {
-                done = true
-            } else if resultSize < 0 {
-                retVal = "failed to fetch from url \(url)"
-                done = true
-            } else if resultSize > maxSize {
-                maxSize = resultSize
-            } else {
-                retVal = fromFFI(ptr: dest_ptr, size: resultSize)
-                done = true
-            }
+                if resultSize == 0 {
+                    done = true
+                } else if resultSize < 0 {
+                    retVal = "failed to fetch from url \(url)"
+                    done = true
+                } else if resultSize > maxSize {
+                    maxSize = resultSize
+                } else {
+                    retVal = fromFFI(ptr: dest_ptr, size: resultSize)
+                    done = true
+                }
+            })
         })
     }
     

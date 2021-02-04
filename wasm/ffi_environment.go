@@ -357,6 +357,12 @@ const (
 	methodDelete = int32(4)
 )
 
+const (
+	contentTypeJSON        = "application/json"
+	contentTypeTextPlain   = "text/plain"
+	contentTypeOctetStream = "application/octet-stream"
+)
+
 var methodValToMethod = map[int32]string{
 	methodGet:    http.MethodGet,
 	methodPost:   http.MethodPost,
@@ -382,23 +388,15 @@ func fetch_url(context unsafe.Pointer, method int32, urlPointer int32, urlSize i
 
 	urlBytes := inst.readMemory(urlPointer, urlSize)
 
-	// the URL is encoded with headers added on the end, seperated by ::
+	// the URL is encoded with headers added on the end, each seperated by ::
 	// eg. https://google.com/somepage::authorization:bearer qdouwrnvgoquwnrg::anotherheader:nicetomeetyou
 	urlParts := strings.Split(string(urlBytes), "::")
 	urlString := urlParts[0]
 
-	headers := http.Header{}
-
-	if len(urlParts) > 1 {
-		for _, p := range urlParts[1:] {
-			headerParts := strings.Split(p, ":")
-			if len(headerParts) != 2 {
-				logger.ErrorString("could not parse URL headers")
-				return -2
-			}
-
-			headers.Add(headerParts[0], headerParts[1])
-		}
+	headers, err := parseHTTPHeaders(urlParts)
+	if err != nil {
+		logger.Error(errors.Wrap(err, "could not parse URL headers"))
+		return -2
 	}
 
 	urlObj, err := url.Parse(urlString)
@@ -409,13 +407,19 @@ func fetch_url(context unsafe.Pointer, method int32, urlPointer int32, urlSize i
 
 	body := inst.readMemory(bodyPointer, bodySize)
 
+	if len(body) > 0 {
+		if headers.Get("Content-Type") == "" {
+			headers.Add("Content-Type", contentTypeOctetStream)
+		}
+	}
+
 	req, err := http.NewRequest(httpMethod, urlObj.String(), bytes.NewBuffer(body))
 	if err != nil {
 		logger.ErrorString("failed to build request")
 		return -2
 	}
 
-	req.Header = headers
+	req.Header = *headers
 
 	resp, err := http.DefaultClient.Do(req)
 	if err != nil {
