@@ -79,8 +79,8 @@ func (w *Runner) Run(job hive.Job, ctx *hive.Ctx) (interface{}, error) {
 			return
 		}
 
-		wasmRun := instance.wasmerInst.Exports["run_e"]
-		if wasmRun == nil {
+		wasmRun, err := instance.wasmerInst.Exports.GetFunction("run_e")
+		if err != nil || wasmRun == nil {
 			runErr = errors.New("missing required FFI function: run_e")
 			return
 		}

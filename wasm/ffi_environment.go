@@ -1,38 +1,11 @@
 package wasm
 
-// #include <stdlib.h>
-//
-// extern void return_result(void *context, int32_t pointer, int32_t size, int32_t ident);
-// extern void return_result_swift(void *context, int32_t pointer, int32_t size, int32_t ident, int32_t swiftself, int32_t swifterr);
-//
-// extern int32_t fetch_url(void *context, int32_t method, int32_t urlPointer, int32_t urlSize, int32_t bodyPointer, int32_t bodySize, int32_t destPointer, int32_t destMaxSize, int32_t ident);
-// extern int32_t fetch_url_swift(void *context, int32_t method, int32_t urlPointer, int32_t urlSize, int32_t bodyPointer, int32_t bodySize, int32_t destPointer, int32_t destMaxSize, int32_t ident, int32_t swiftself, int32_t swifterr);
-//
-// extern int32_t cache_set(void *context, int32_t keyPointer, int32_t keySize, int32_t valPointer, int32_t valSize, int32_t ttl, int32_t ident);
-// extern int32_t cache_set_swift(void *context, int32_t keyPointer, int32_t keySize, int32_t valPointer, int32_t valSize, int32_t ttl, int32_t ident, int32_t swiftself, int32_t swifterr);
-//
-// extern int32_t cache_get(void *context, int32_t keyPointer, int32_t keySize, int32_t destPointer, int32_t destMaxSize, int32_t ident);
-// extern int32_t cache_get_swift(void *context, int32_t keyPointer, int32_t keySize, int32_t destPointer, int32_t destMaxSize, int32_t ident, int32_t swiftself, int32_t swifterr);
-//
-// extern void log_msg(void *context, int32_t pointer, int32_t size, int32_t level, int32_t ident);
-// extern void log_msg_swift(void *context, int32_t pointer, int32_t size, int32_t level, int32_t ident, int32_t swiftself, int32_t swifterr);
-//
-// extern int32_t request_get_field(void *context, int32_t fieldType, int32_t keyPointer, int32_t keySize, int32_t destPointer, int32_t destMaxSize, int32_t ident);
-// extern int32_t request_get_field_swift(void *context, int32_t fieldType, int32_t keyPointer, int32_t keySize, int32_t destPointer, int32_t destMaxSize, int32_t ident, int32_t swiftself, int32_t swifterr);
-import "C"
-
 import (
-	"bytes"
 	"crypto/rand"
+	"fmt"
 	"math"
 	"math/big"
-	"strings"
 	"sync"
-
-	"io/ioutil"
-	"net/http"
-	"net/url"
-	"unsafe"
 
 	"github.com/google/uuid"
 	"github.com/pkg/errors"
@@ -74,6 +47,9 @@ var logger = vlog.Default()
 type wasmEnvironment struct {
 	UUID      string
 	ref       *bundle.WasmModuleRef
+	module    *wasmer.Module
+	store     *wasmer.Store
+	imports   *wasmer.ImportObject
 	instances []*wasmInstance
 
 	// the index of the last used wasm instance
@@ -82,7 +58,7 @@ type wasmEnvironment struct {
 }
 
 type wasmInstance struct {
-	wasmerInst wasmer.Instance
+	wasmerInst *wasmer.Instance
 	hiveCtx    *hive.Ctx
 	request    *request.CoordinatedRequest
 	resultChan chan []byte
@@ -113,6 +89,40 @@ func newEnvironment(ref *bundle.WasmModuleRef) *wasmEnvironment {
 	environments[e.UUID] = e
 
 	return e
+}
+
+// addInstance adds a new Wasm instance to the environment's pool
+func (w *wasmEnvironment) addInstance() error {
+	w.lock.Lock()
+	defer w.lock.Unlock()
+
+	module, _, imports, err := w.internals()
+	if err != nil {
+		return errors.Wrap(err, "failed to ModuleBytes")
+	}
+
+	inst, err := wasmer.NewInstance(module, imports)
+	if err != nil {
+		return errors.Wrap(err, "failed to NewInstance")
+	}
+
+	// if the module has exported an init, call it
+	init, err := inst.Exports.GetFunction("init")
+	if err == nil && init != nil {
+		if _, err := init(); err != nil {
+			return errors.Wrap(err, "failed to init instance")
+		}
+	}
+
+	instance := &wasmInstance{
+		wasmerInst: inst,
+		resultChan: make(chan []byte, 1),
+		lock:       sync.Mutex{},
+	}
+
+	w.instances = append(w.instances, instance)
+
+	return nil
 }
 
 // useInstance provides an instance from the environment's pool to be used
@@ -152,63 +162,48 @@ func (w *wasmEnvironment) useInstance(req *request.CoordinatedRequest, ctx *hive
 	return nil
 }
 
-// addInstance adds a new Wasm instance to the environment's pool
-func (w *wasmEnvironment) addInstance() error {
-	w.lock.Lock()
-	defer w.lock.Unlock()
-
-	module, err := w.ref.ModuleBytes()
-	if err != nil {
-		return errors.Wrap(err, "failed to ModuleBytes")
-	}
-
-	// mount the WASI interface
-	imports, err := wasmer.NewDefaultWasiImportObjectForVersion(wasmer.Snapshot1).Imports()
-	if err != nil {
-		return errors.Wrap(err, "failed to create Imports")
-	}
-
-	// Mount the Runnable API
-	imports.AppendFunction("return_result", return_result, C.return_result)
-	imports.AppendFunction("return_result_swift", return_result_swift, C.return_result_swift)
-
-	imports.AppendFunction("fetch_url", fetch_url, C.fetch_url)
-	imports.AppendFunction("fetch_url_swift", fetch_url_swift, C.fetch_url_swift)
-
-	imports.AppendFunction("cache_set", cache_set, C.cache_set)
-	imports.AppendFunction("cache_set_swift", cache_set_swift, C.cache_set_swift)
-
-	imports.AppendFunction("cache_get", cache_get, C.cache_get)
-	imports.AppendFunction("cache_get_swift", cache_get_swift, C.cache_get_swift)
-
-	imports.AppendFunction("log_msg", log_msg, C.log_msg)
-	imports.AppendFunction("log_msg_swift", log_msg_swift, C.log_msg_swift)
-
-	imports.AppendFunction("request_get_field", request_get_field, C.request_get_field)
-	imports.AppendFunction("request_get_field_swift", request_get_field_swift, C.request_get_field_swift)
-
-	inst, err := wasmer.NewInstanceWithImports(module, imports)
-	if err != nil {
-		return errors.Wrap(err, "failed to NewInstance")
-	}
-
-	// if the module has exported an init, call it
-	init := inst.Exports["init"]
-	if init != nil {
-		if _, err := init(); err != nil {
-			return errors.Wrap(err, "failed to init instance")
+func (w *wasmEnvironment) internals() (*wasmer.Module, *wasmer.Store, *wasmer.ImportObject, error) {
+	if w.module == nil {
+		moduleBytes, err := w.ref.ModuleBytes()
+		if err != nil {
+			return nil, nil, nil, errors.Wrap(err, "failed to get ref ModuleBytes")
 		}
+
+		engine := wasmer.NewEngine()
+		store := wasmer.NewStore(engine)
+
+		// Compiles the module
+		mod, err := wasmer.NewModule(store, moduleBytes)
+		if err != nil {
+			return nil, nil, nil, errors.Wrap(err, "failed to NewModule")
+		}
+
+		env, err := wasmer.NewWasiStateBuilder(w.ref.Name).Finalize()
+		if err != nil {
+			return nil, nil, nil, errors.Wrap(err, "failed to NewWasiStateBuilder.Finalize")
+		}
+
+		imports, err := env.GenerateImportObject(store, mod)
+		if err != nil {
+			return nil, nil, nil, errors.Wrap(err, "failed to GenerateImportObject")
+		}
+
+		// mount the Runnable API host functions to the module's imports
+		addHostFns(imports, store,
+			returnResult(),
+			fetchURL(),
+			cacheSet(),
+			cacheGet(),
+			logMsg(),
+			requestGetField(),
+		)
+
+		w.module = mod
+		w.store = store
+		w.imports = imports
 	}
 
-	instance := &wasmInstance{
-		wasmerInst: inst,
-		resultChan: make(chan []byte, 1),
-		lock:       sync.Mutex{},
-	}
-
-	w.instances = append(w.instances, instance)
-
-	return nil
+	return w.module, w.store, w.imports, nil
 }
 
 func setupNewIdentifier(envUUID string, instIndex int) (int32, error) {
@@ -282,7 +277,14 @@ func randomIdentifier() (int32, error) {
 /////////////////////////////////////////////////////////////////////////////
 
 func (w *wasmInstance) readMemory(pointer int32, size int32) []byte {
-	data := w.wasmerInst.Memory.Data()[pointer:]
+	memory, err := w.wasmerInst.Exports.GetMemory("memory")
+	if err != nil || memory == nil {
+		fmt.Println("MEMORY BAD")
+		// we failed
+		return []byte{}
+	}
+
+	data := memory.Data()[pointer:]
 	result := make([]byte, size)
 
 	for index := 0; int32(index) < size; index++ {
@@ -295,8 +297,8 @@ func (w *wasmInstance) readMemory(pointer int32, size int32) []byte {
 func (w *wasmInstance) writeMemory(data []byte) (int32, error) {
 	lengthOfInput := len(data)
 
-	allocate := w.wasmerInst.Exports["allocate"]
-	if allocate == nil {
+	allocate, err := w.wasmerInst.Exports.GetFunction("allocate")
+	if err != nil || allocate == nil {
 		return -1, errors.New("missing required FFI function: allocate")
 	}
 
@@ -306,7 +308,7 @@ func (w *wasmInstance) writeMemory(data []byte) (int32, error) {
 		return -1, errors.Wrap(err, "failed to call allocate")
 	}
 
-	pointer := allocateResult.ToI32()
+	pointer := allocateResult.(int32)
 
 	w.writeMemoryAtLocation(pointer, data)
 
@@ -314,312 +316,25 @@ func (w *wasmInstance) writeMemory(data []byte) (int32, error) {
 }
 
 func (w *wasmInstance) writeMemoryAtLocation(pointer int32, data []byte) {
-	memory := w.wasmerInst.Memory.Data()[pointer:]
+	memory, err := w.wasmerInst.Exports.GetMemory("memory")
+	if err != nil || memory == nil {
+		fmt.Println("MEMORY BAD")
+		// we failed
+		return
+	}
 
-	copy(memory, data)
+	scopedMemory := memory.Data()[pointer:]
+
+	copy(scopedMemory, data)
 }
 
 func (w *wasmInstance) deallocate(pointer int32, length int) {
-	dealloc := w.wasmerInst.Exports["deallocate"]
+	dealloc, err := w.wasmerInst.Exports.GetFunction("deallocate")
+	if err != nil || dealloc == nil {
+		fmt.Println("DEALLOC BAD")
+		// we failed
+		return
+	}
 
 	dealloc(pointer, length)
-}
-
-///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
-// below is the "Runnable API" which grants capabilites to Wasm runnables by routing things like network requests through the host (Go) code //
-///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
-
-//export return_result
-func return_result(context unsafe.Pointer, pointer int32, size int32, identifier int32) {
-	envLock.RLock()
-	defer envLock.RUnlock()
-
-	inst, err := instanceForIdentifier(identifier)
-	if err != nil {
-		logger.Error(errors.Wrap(err, "[hive-wasm] alert: invalid identifier used, potential malicious activity"))
-		return
-	}
-
-	result := inst.readMemory(pointer, size)
-
-	inst.resultChan <- result
-}
-
-//export return_result_swift
-func return_result_swift(context unsafe.Pointer, pointer int32, size int32, identifier int32, swiftself int32, swifterr int32) {
-	return_result(context, pointer, size, identifier)
-}
-
-const (
-	methodGet    = int32(1)
-	methodPost   = int32(2)
-	methodPatch  = int32(3)
-	methodDelete = int32(4)
-)
-
-const (
-	contentTypeJSON        = "application/json"
-	contentTypeTextPlain   = "text/plain"
-	contentTypeOctetStream = "application/octet-stream"
-)
-
-var methodValToMethod = map[int32]string{
-	methodGet:    http.MethodGet,
-	methodPost:   http.MethodPost,
-	methodPatch:  http.MethodPatch,
-	methodDelete: http.MethodDelete,
-}
-
-//export fetch_url
-func fetch_url(context unsafe.Pointer, method int32, urlPointer int32, urlSize int32, bodyPointer int32, bodySize int32, destPointer int32, destMaxSize int32, identifier int32) int32 {
-	// fetch makes a network request on bahalf of the wasm runner.
-	// fetch writes the http response body into memory starting at returnBodyPointer, and the return value is a pointer to that memory
-	inst, err := instanceForIdentifier(identifier)
-	if err != nil {
-		logger.Error(errors.Wrap(err, "[hive-wasm] alert: invalid identifier used, potential malicious activity"))
-		return -1
-	}
-
-	httpMethod, exists := methodValToMethod[method]
-	if !exists {
-		logger.ErrorString("invalid method provided")
-		return -2
-	}
-
-	urlBytes := inst.readMemory(urlPointer, urlSize)
-
-	// the URL is encoded with headers added on the end, each seperated by ::
-	// eg. https://google.com/somepage::authorization:bearer qdouwrnvgoquwnrg::anotherheader:nicetomeetyou
-	urlParts := strings.Split(string(urlBytes), "::")
-	urlString := urlParts[0]
-
-	headers, err := parseHTTPHeaders(urlParts)
-	if err != nil {
-		logger.Error(errors.Wrap(err, "could not parse URL headers"))
-		return -2
-	}
-
-	urlObj, err := url.Parse(urlString)
-	if err != nil {
-		logger.ErrorString("couldn't parse URL")
-		return -2
-	}
-
-	body := inst.readMemory(bodyPointer, bodySize)
-
-	if len(body) > 0 {
-		if headers.Get("Content-Type") == "" {
-			headers.Add("Content-Type", contentTypeOctetStream)
-		}
-	}
-
-	req, err := http.NewRequest(httpMethod, urlObj.String(), bytes.NewBuffer(body))
-	if err != nil {
-		logger.ErrorString("failed to build request")
-		return -2
-	}
-
-	req.Header = *headers
-
-	resp, err := http.DefaultClient.Do(req)
-	if err != nil {
-		logger.Error(errors.Wrap(err, "failed to Do request"))
-		return -3
-	}
-
-	defer resp.Body.Close()
-	respBytes, err := ioutil.ReadAll(resp.Body)
-	if err != nil {
-		logger.ErrorString("failed to Read response body")
-		return -4
-	}
-
-	// if the size is greater than what's been allocated, then the module will increase the size and try again
-	if len(respBytes) <= int(destMaxSize) {
-		inst.writeMemoryAtLocation(destPointer, respBytes)
-	}
-
-	return int32(len(respBytes))
-}
-
-//export fetch_url_swift
-func fetch_url_swift(context unsafe.Pointer, method int32, urlPointer int32, urlSize int32, bodyPointer int32, bodySize int32, destPointer int32, destMaxSize int32, identifier int32, swiftself int32, swifterr int32) int32 {
-	return fetch_url(context, method, urlPointer, urlSize, bodyPointer, bodySize, destPointer, destMaxSize, identifier)
-}
-
-//export cache_set
-func cache_set(context unsafe.Pointer, keyPointer int32, keySize int32, valPointer int32, valSize int32, ttl int32, identifier int32) int32 {
-	inst, err := instanceForIdentifier(identifier)
-	if err != nil {
-		logger.Error(errors.Wrap(err, "[hive-wasm] alert: invalid identifier used, potential malicious activity"))
-		return -1
-	}
-
-	key := inst.readMemory(keyPointer, keySize)
-	val := inst.readMemory(valPointer, valSize)
-
-	logger.Debug("[hive-wasm] setting cache key", string(key))
-
-	if err := inst.hiveCtx.Cache.Set(string(key), val, int(ttl)); err != nil {
-		logger.ErrorString("[hive-wasm] failed to set cache key", string(key), err.Error())
-		return -2
-	}
-
-	return 0
-}
-
-//export cache_set_swift
-func cache_set_swift(context unsafe.Pointer, keyPointer int32, keySize int32, valPointer int32, valSize int32, ttl int32, identifier int32, swiftself int32, swifterr int32) int32 {
-	return cache_set(context, keyPointer, keySize, valPointer, valSize, ttl, identifier)
-}
-
-//export cache_get
-func cache_get(context unsafe.Pointer, keyPointer int32, keySize int32, destPointer int32, destMaxSize int32, identifier int32) int32 {
-	inst, err := instanceForIdentifier(identifier)
-	if err != nil {
-		logger.Error(errors.Wrap(err, "[hive-wasm] alert: invalid identifier used, potential malicious activity"))
-		return -1
-	}
-
-	key := inst.readMemory(keyPointer, keySize)
-
-	logger.Debug("[hive-wasm] getting cache key", string(key))
-
-	val, err := inst.hiveCtx.Cache.Get(string(key))
-	if err != nil {
-		logger.ErrorString("[hive-wasm] failed to get cache key", string(key), err.Error())
-		return -2
-	}
-
-	valBytes := []byte(val)
-
-	if len(valBytes) <= int(destMaxSize) {
-		inst.writeMemoryAtLocation(destPointer, valBytes)
-	}
-
-	return int32(len(valBytes))
-}
-
-//export cache_get_swift
-func cache_get_swift(context unsafe.Pointer, keyPointer int32, keySize int32, destPointer int32, destMaxSize int32, identifier int32, swiftself int32, swifterr int32) int32 {
-	return cache_get(context, keyPointer, keySize, destPointer, destMaxSize, identifier)
-}
-
-type logScope struct {
-	Identifier int32 `json:"ident"`
-}
-
-//export log_msg
-func log_msg(context unsafe.Pointer, pointer int32, size int32, level int32, identifier int32) {
-	inst, err := instanceForIdentifier(identifier)
-	if err != nil {
-		logger.Error(errors.Wrap(err, "[hive-wasm] alert: invalid identifier used, potential malicious activity"))
-		return
-	}
-
-	msgBytes := inst.readMemory(pointer, size)
-
-	l := logger.CreateScoped(logScope{Identifier: identifier})
-
-	switch level {
-	case 1:
-		l.ErrorString(string(msgBytes))
-	case 2:
-		l.Warn(string(msgBytes))
-	default:
-		l.Info(string(msgBytes))
-	}
-}
-
-//export log_msg_swift
-func log_msg_swift(context unsafe.Pointer, pointer int32, size int32, level int32, identifier int32, swiftself int32, swifterr int32) {
-	log_msg(context, pointer, size, level, identifier)
-}
-
-const (
-	fieldTypeMeta   = int32(0)
-	fieldTypeBody   = int32(1)
-	fieldTypeHeader = int32(2)
-	fieldTypeParams = int32(3)
-	fieldTypeState  = int32(4)
-)
-
-//export request_get_field
-func request_get_field(context unsafe.Pointer, fieldType int32, keyPointer int32, keySize int32, destPointer int32, destMaxSize int32, identifier int32) int32 {
-	inst, err := instanceForIdentifier(identifier)
-	if err != nil {
-		logger.Error(errors.Wrap(err, "[hive-wasm] alert: invalid identifier used, potential malicious activity"))
-		return -1
-	}
-
-	if inst.request == nil {
-		logger.ErrorString("[hive-wasm] Runnable attempted to access request when none is set")
-		return -2
-	}
-
-	req := inst.request
-
-	keyBytes := inst.readMemory(keyPointer, keySize)
-	key := string(keyBytes)
-
-	val := ""
-
-	switch fieldType {
-	case fieldTypeMeta:
-		switch key {
-		case "method":
-			val = req.Method
-		case "url":
-			val = req.URL
-		case "id":
-			val = req.ID
-		case "body":
-			val = string(req.Body)
-		default:
-			return -3
-		}
-	case fieldTypeBody:
-		bodyVal, err := req.BodyField(key)
-		if err == nil {
-			val = bodyVal
-		} else {
-			logger.Error(errors.Wrap(err, "failed to get BodyField"))
-			return -4
-		}
-	case fieldTypeHeader:
-		header, ok := req.Headers[key]
-		if ok {
-			val = header
-		} else {
-			return -3
-		}
-	case fieldTypeParams:
-		param, ok := req.Params[key]
-		if ok {
-			val = param
-		} else {
-			return -3
-		}
-	case fieldTypeState:
-		stateVal, ok := req.State[key]
-		if ok {
-			val = string(stateVal)
-		} else {
-			return -3
-		}
-	}
-
-	valBytes := []byte(val)
-
-	if len(valBytes) <= int(destMaxSize) {
-		inst.writeMemoryAtLocation(destPointer, valBytes)
-	}
-
-	// logger.Debug(fmt.Sprintf("returning value length %d", len(valBytes)))
-	return int32(len(valBytes))
-}
-
-//export request_get_field_swift
-func request_get_field_swift(context unsafe.Pointer, fieldType int32, keyPointer int32, keySize int32, destPointer int32, destMaxSize int32, identifier int32, swiftSelf int32, swiftErr int32) int32 {
-	return request_get_field(context, fieldType, keyPointer, keySize, destPointer, destMaxSize, identifier)
 }
