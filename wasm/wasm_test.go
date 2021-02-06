@@ -128,7 +128,7 @@ func TestWasmRunnerSwift(t *testing.T) {
 		t.Error("failed to ToJSON", err)
 	}
 
-	job := hive.NewJob("swift-echo", reqJSON)
+	job := hive.NewJob("swift-log", reqJSON)
 
 	res, err := sharedH.Do(job).Then()
 	if err != nil {
