@@ -1,8 +1,13 @@
 language: go
 
-os: 
-  - osx
-  - linux
+jobs:
+  include:
+   - os: linux
+     arch: amd64
+   - os: linux
+     arch: arm64
+   - os: osx
+     arch: amd64
 
 go:
 - "1.15.x"
