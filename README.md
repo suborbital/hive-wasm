@@ -1,6 +1,4 @@
-# Hive ❤️ WASM
-
-[![Build Status](https://travis-ci.com/suborbital/hive-wasm.svg?branch=master)](https://travis-ci.com/suborbital/hive-wasm)
+# This repo is no longer in use, all of its packages have been absorbed into [Reactr](https://github.com/suborbital/reactr)
 
 `hive-wasm` is the WASM API for [Hive](https://github.com/suborbital/hive).
 
