@@ -2,7 +2,7 @@ language: go
 
 os: 
   - osx
-  # - linux
+  - linux
 
 go:
 - "1.15.x"
