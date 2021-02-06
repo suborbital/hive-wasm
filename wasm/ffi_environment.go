@@ -47,8 +47,9 @@ var logger = vlog.Default()
 type wasmEnvironment struct {
 	UUID      string
 	ref       *bundle.WasmModuleRef
-	store     *wasmer.Store
 	module    *wasmer.Module
+	store     *wasmer.Store
+	imports   *wasmer.ImportObject
 	instances []*wasmInstance
 
 	// the index of the last used wasm instance
@@ -95,30 +96,10 @@ func (w *wasmEnvironment) addInstance() error {
 	w.lock.Lock()
 	defer w.lock.Unlock()
 
-	module, store, err := w.internals()
+	module, _, imports, err := w.internals()
 	if err != nil {
 		return errors.Wrap(err, "failed to ModuleBytes")
 	}
-
-	env, err := wasmer.NewWasiStateBuilder(w.ref.Name).Finalize()
-	if err != nil {
-		return errors.Wrap(err, "failed to NewWasiStateBuilder.Finalize")
-	}
-
-	imports, err := env.GenerateImportObject(store, module)
-	if err != nil {
-		return errors.Wrap(err, "failed to GenerateImportObject")
-	}
-
-	// mount the Runnable API host functions to the module's imports
-	addHostFns(imports, store,
-		returnResult(),
-		fetchURL(),
-		cacheSet(),
-		cacheGet(),
-		logMsg(),
-		requestGetField(),
-	)
 
 	inst, err := wasmer.NewInstance(module, imports)
 	if err != nil {
@@ -181,11 +162,11 @@ func (w *wasmEnvironment) useInstance(req *request.CoordinatedRequest, ctx *hive
 	return nil
 }
 
-func (w *wasmEnvironment) internals() (*wasmer.Module, *wasmer.Store, error) {
+func (w *wasmEnvironment) internals() (*wasmer.Module, *wasmer.Store, *wasmer.ImportObject, error) {
 	if w.module == nil {
 		moduleBytes, err := w.ref.ModuleBytes()
 		if err != nil {
-			return nil, nil, errors.Wrap(err, "failed to get ref ModuleBytes")
+			return nil, nil, nil, errors.Wrap(err, "failed to get ref ModuleBytes")
 		}
 
 		engine := wasmer.NewEngine()
@@ -194,14 +175,35 @@ func (w *wasmEnvironment) internals() (*wasmer.Module, *wasmer.Store, error) {
 		// Compiles the module
 		mod, err := wasmer.NewModule(store, moduleBytes)
 		if err != nil {
-			return nil, nil, errors.Wrap(err, "failed to NewModule")
+			return nil, nil, nil, errors.Wrap(err, "failed to NewModule")
 		}
 
-		w.store = store
+		env, err := wasmer.NewWasiStateBuilder(w.ref.Name).Finalize()
+		if err != nil {
+			return nil, nil, nil, errors.Wrap(err, "failed to NewWasiStateBuilder.Finalize")
+		}
+
+		imports, err := env.GenerateImportObject(store, mod)
+		if err != nil {
+			return nil, nil, nil, errors.Wrap(err, "failed to GenerateImportObject")
+		}
+
+		// mount the Runnable API host functions to the module's imports
+		addHostFns(imports, store,
+			returnResult(),
+			fetchURL(),
+			cacheSet(),
+			cacheGet(),
+			logMsg(),
+			requestGetField(),
+		)
+
 		w.module = mod
+		w.store = store
+		w.imports = imports
 	}
 
-	return w.module, w.store, nil
+	return w.module, w.store, w.imports, nil
 }
 
 func setupNewIdentifier(envUUID string, instIndex int) (int32, error) {
